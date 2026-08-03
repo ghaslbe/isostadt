@@ -1,0 +1,1 @@
+Aufbaustrategie in einem File
