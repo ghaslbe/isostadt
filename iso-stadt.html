@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iso-Stadt — Prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0E1B24; --amber:#F2B035; --fog:#8CA0A8; --alarm:#C46A5C;
+  --line:rgba(140,160,168,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--night);color:#E8EDEF;font-family:"IBM Plex Sans",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;touch-action:manipulation}
+#c{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
+.bar{position:fixed;top:0;left:0;right:0;z-index:2;display:flex;align-items:flex-start;
+  justify-content:space-between;padding:18px 18px 0;gap:12px;pointer-events:none}
+.purse{display:flex;align-items:center;gap:9px}
+.coin{width:15px;height:15px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 32% 28%,#FFDE93,var(--amber) 62%,#B57C12);
+  box-shadow:0 0 14px rgba(242,176,53,.45)}
+#coins{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:30px;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.purse .lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--fog)}
+.tally{text-align:right;font-size:11px;line-height:1.65;color:var(--fog)}
+.tally b{font-family:"IBM Plex Mono",monospace;color:#E8EDEF;font-weight:600;font-variant-numeric:tabular-nums}
+.tally b.warn{color:var(--alarm)}
+.tray{position:fixed;left:0;right:0;bottom:0;z-index:2;
+  padding:0 12px calc(14px + env(safe-area-inset-bottom));
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tray::-webkit-scrollbar{display:none}
+.card{flex:none;min-width:112px;text-align:left;cursor:pointer;
+  background:rgba(14,27,36,.82);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:3px;padding:9px 11px 10px;color:inherit;font:inherit;
+  transition:border-color .16s,background .16s,transform .16s}
+.card:hover{border-color:rgba(242,176,53,.4)}
+.card:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--amber);background:rgba(242,176,53,.1);transform:translateY(-3px)}
+.card .n{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;font-size:14px;
+  letter-spacing:-.01em;display:block;margin-bottom:3px}
+.card .m{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--fog);display:block;line-height:1.5}
+.card .m em{font-style:normal;color:var(--amber)}
+.card.broke .m em{color:var(--alarm)}
+.card.util{min-width:78px}.card.util .n{font-size:12px;margin:0}
+.card.sq{min-width:62px;width:62px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;padding:8px 4px;text-align:center}
+.card.sq .n{font-size:11px;margin:0;line-height:1.15}
+.card.sq .g{width:17px;height:17px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 32% 28%,#FFDE93,var(--amber) 62%,#B57C12);
+  box-shadow:0 0 10px rgba(242,176,53,.4)}
+.card.sq[aria-pressed="true"] .g{box-shadow:0 0 16px rgba(242,176,53,.75)}
+.topActs{position:fixed;left:18px;top:74px;z-index:3;display:flex;gap:6px}
+.topActs button{font:inherit;font-size:11px;letter-spacing:.02em;cursor:pointer;
+  color:#CBD8DC;padding:6px 11px;background:rgba(14,27,36,.82);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:3px;
+  transition:border-color .16s,color .16s}
+.topActs button:hover{border-color:rgba(242,176,53,.55);color:var(--amber)}
+.topActs button:active{background:rgba(242,176,53,.12)}
+.topActs button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media (max-width:520px){.topActs{top:64px}}
+.zoom{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:2;
+  display:flex;flex-direction:column;gap:6px}
+.zoom button{width:38px;height:38px;cursor:pointer;color:#CBD8DC;
+  background:rgba(14,27,36,.82);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:3px;
+  font-family:"IBM Plex Mono",monospace;font-size:17px;line-height:1;
+  transition:border-color .16s,color .16s}
+.zoom button:hover{border-color:rgba(242,176,53,.5);color:#F2B035}
+.zoom button:active{background:rgba(242,176,53,.12)}
+.zoom button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.sheet{position:fixed;inset:0;z-index:9;background:rgba(6,13,18,.78);
+  backdrop-filter:blur(6px);display:flex;justify-content:center;
+  align-items:flex-start;overflow-y:auto;padding:0 0 60px}
+.sheet[hidden]{display:none}
+.sheetInner{width:min(760px,100%);background:#101E28;border:1px solid var(--line);
+  border-radius:4px;margin:24px 14px}
+.sheetTop{position:sticky;top:0;background:#101E28;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;padding:16px 18px;z-index:2}
+.sheetTop h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
+  font-size:19px;letter-spacing:-.02em}
+.sheetTop button{width:32px;height:32px;background:none;border:1px solid var(--line);
+  border-radius:3px;color:var(--fog);cursor:pointer;font-size:14px}
+.sheetTop button:hover{border-color:rgba(242,176,53,.5);color:var(--amber)}
+.sheetBody{padding:6px 18px 26px}
+.sheetBody h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
+  font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);
+  margin:26px 0 10px}
+.sheetBody p{font-size:13px;line-height:1.65;color:#C3D0D5;margin:0 0 10px;max-width:62ch}
+.sheetBody b{color:#E8EDEF;font-weight:500}
+.chain{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:4px 0 8px}
+.chain::-webkit-scrollbar{display:none}
+.step{flex:none;width:126px;border:1px solid var(--line);border-radius:3px;
+  background:#0C1922;padding:8px;text-align:center}
+.step canvas{display:block;position:static;inset:auto;margin:0 auto;touch-action:auto}
+/* Dieselbe Scherung wie im Spiel, nur vom Compositor erledigt:
+   der Ursprung sitzt auf der Standlinie, unten bewegt sich also nichts. */
+@keyframes sway{
+  0%,100%{ transform:skewX(-2.4deg) }
+  50%    { transform:skewX( 2.4deg) }
+}
+@keyframes cardGlow{
+  0%,100%{ filter:drop-shadow(0 0 3px rgba(242,176,53,.22)) }
+  50%    { filter:drop-shadow(0 0 10px rgba(242,176,53,.5)) }
+}
+.step canvas.sway{ animation:sway 5.4s ease-in-out infinite }
+.step canvas.glow{ animation:cardGlow 2.8s ease-in-out infinite }
+.step canvas.sway.glow{ animation:sway 5.4s ease-in-out infinite,
+                                  cardGlow 2.8s ease-in-out infinite }
+@media (prefers-reduced-motion:reduce){ .step canvas{ animation:none !important } }
+.step .num{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--amber);margin-bottom:3px}
+.sep{flex:none;align-self:center;color:rgba(242,176,53,.5);font-size:19px;line-height:1;
+  padding:0 2px;user-select:none}
+.scrollNote{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--fog);
+  margin:-4px 0 2px;letter-spacing:.04em}
+.step .sn{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
+  font-size:12px;margin-top:4px;letter-spacing:-.01em}
+.step .sd{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--fog);
+  line-height:1.55;margin-top:4px}
+.step .sd em{font-style:normal;color:var(--amber)}
+.step .sd i{font-style:normal;color:#8FC0D8}
+.btnRow{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 4px}
+.act{font:inherit;font-size:12px;cursor:pointer;color:#DCE5E8;padding:7px 12px;
+  background:#0C1922;border:1px solid var(--line);border-radius:3px;
+  transition:border-color .16s,color .16s}
+.act:hover{border-color:rgba(242,176,53,.55);color:var(--amber)}
+.act:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.act.warn:hover{border-color:rgba(196,106,92,.7);color:var(--alarm)}
+.saveBox{width:100%;height:88px;margin-top:8px;resize:vertical;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.5;
+  color:#C3D0D5;background:#0A141B;border:1px solid var(--line);
+  border-radius:3px;padding:8px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px;
+  color:#C3D0D5;margin:2px 0 4px;align-items:baseline}
+.keys kbd{font-family:"IBM Plex Mono",monospace;font-size:11px;background:#0C1922;
+  border:1px solid var(--line);border-radius:3px;padding:2px 6px;color:#E8EDEF;white-space:nowrap}
+.flag{display:inline-block;width:9px;height:9px;transform:rotate(45deg);
+  margin-right:6px;vertical-align:middle}
+.tip{position:fixed;left:0;right:0;z-index:2;text-align:center;font-size:11.5px;
+  color:var(--fog);pointer-events:none;padding:0 20px;transition:opacity .3s;
+  bottom:calc(112px + env(safe-area-inset-bottom))}
+@media (max-width:520px){#coins{font-size:24px}
+  .tip{bottom:calc(108px + env(safe-area-inset-bottom))}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header class="bar">
+  <div class="purse">
+    <div class="coin"></div>
+    <div><div id="coins">220</div><span class="lbl">Münzen</span></div>
+  </div>
+  <div class="tally">
+    <div>Einwohner frei <b id="pop">0 / 0</b></div>
+    <div>Ertrag/Min <b id="rate">0</b></div>
+    <div>Stillstand <b id="cut">0</b></div>
+    <div>Freie Felder <b id="free">0</b></div>
+  </div>
+</header>
+<div class="zoom" role="group" aria-label="Ansicht">
+  <button id="zin"  aria-label="Näher heranzoomen">+</button>
+  <button id="zout" aria-label="Weiter herauszoomen">&#8722;</button>
+  <button id="zfit" aria-label="Ganze Stadt zeigen">&#9633;</button>
+  <button id="zhelp" aria-label="Hilfe und Gebäudeübersicht">?</button>
+</div>
+
+<div class="sheet" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+  <div class="sheetInner">
+    <header class="sheetTop">
+      <h1 id="helpTitle">Iso-Stadt</h1>
+      <button id="helpClose" aria-label="Hilfe schließen">&#10005;</button>
+    </header>
+    <div class="sheetBody" id="helpBody"></div>
+  </div>
+</div>
+<div class="topActs">
+  <button id="bSave" title="Spielstand als Datei herunterladen">Sichern</button>
+  <button id="bLoad" title="Spielstand aus einer Datei einlesen">Laden</button>
+</div>
+
+<p class="tip" id="tip">Straßen vom Rathaus aus verlegen. Gebäude lang halten, um sie zu versetzen.</p>
+<nav class="tray" id="tray" aria-label="Baumenü"></nav>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. SPIELDATEN
+============================================================ */
+const TYPES = {
+  road: { key:'road', label:'Straße', cost:10, isRoad:true,
+    stages:[{name:'Straße', yield:0, time:0, pop:0, h:0, roofH:0, upgrade:null}] },
+
+  /* Die Stufen laufen durch die Epochen: Holzhütte, Fachwerk, Gründerzeit,
+     Nachkriegsmoderne. Höhere Stufen bringen mehr, brauchen aber länger. */
+  hut: { key:'hut', label:'Hütte', cost:50, needsRoad:true,
+    stages:[
+      {name:'Hütte',      yield:8,   time:8,   pop:2,  h:19, roofH:19, floors:1,
+       style:'rustic', wall:'#A08765', roof:'#C0A469', trim:'#5A452F', upgrade:170},
+      {name:'Fachwerkhaus', yield:30, time:14,  pop:6,  h:31, roofH:15, floors:2,
+       style:'timber', wall:'#E0D6C0', roof:'#9C6248', trim:'#4E3B2D', upgrade:520},
+      {name:'Stadthaus',  yield:95,  time:26,  pop:14, h:46, roofH:17, floors:3,
+       style:'stone',  wall:'#E6DCC6', roof:'#7C6F80', trim:'#8E836E', upgrade:1600},
+      {name:'Wohnblock',  yield:340, time:60,  pop:34, h:58, roofH:6,  floors:4,
+       style:'modern', wall:'#C8C7C0', roof:'#5A5F62', trim:'#8B9095', upgrade:5200},
+      {name:'Hochhaus',   yield:1150, time:110, pop:82,  h:68, roofH:6, floors:6,
+       style:'glass',  wall:'#8E9AA2', roof:'#4A5660', trim:'#B3BDC3', upgrade:16000},
+      {name:'Arkologie',  yield:4200, time:240, pop:210, h:80, roofH:6, floors:7,
+       style:'arc',    wall:'#46586E', roof:'#2C3A4C', trim:'#7FD8D0', upgrade:null}
+    ] },
+
+  shop: { key:'shop', label:'Werkstatt', cost:320, needsRoad:true,
+    stages:[
+      {name:'Werkstatt',   yield:120,   time:30,  pop:0, staff:4,   h:23, roofH:11, floors:1,
+       style:'timber', wall:'#C9B99C', roof:'#67757D', trim:'#463A2E', upgrade:820},
+      {name:'Manufaktur',  yield:520,   time:70,  pop:0, staff:14,  h:34, roofH:13, floors:2,
+       style:'stone',  wall:'#B5836B', roof:'#5E5A5E', trim:'#7A5644', upgrade:2400},
+      {name:'Fabrik',      yield:1560,  time:180, pop:0, staff:40,  h:56, roofH:9,  floors:4,
+       style:'brick',  wall:'#8E4536', roof:'#454E52', trim:'#C9B48C', upgrade:9000},
+      {name:'Montagewerk', yield:4800,  time:300, pop:0, staff:95,  h:66, roofH:6,  floors:3,
+       style:'plant',  wall:'#9AA39F', roof:'#4E5658', trim:'#C4713A', upgrade:30000},
+      {name:'Fusionswerk', yield:15000, time:600, pop:0, staff:210, h:76, roofH:6,  floors:4,
+       style:'fusion', wall:'#38485C', roof:'#22303F', trim:'#6FD9E6', upgrade:null}
+    ] },
+
+  tree1: { key:'tree1', label:'Kleiner Baum', cost:800, aura:0.60, tree:'small',
+    trunkH:14, sway:0.052,
+    stages:[{name:'Kleiner Baum', yield:0, time:0, pop:0, h:26, roofH:0, floors:0, upgrade:null}] },
+
+  tree2: { key:'tree2', label:'Großer Baum', cost:2500, aura:1.00, tree:'big',
+    trunkH:25, sway:0.030,
+    stages:[{name:'Großer Baum', yield:0, time:0, pop:0, h:46, roofH:0, floors:0, upgrade:null}] },
+
+  well: { key:'well', label:'Brunnen', cost:240, aura:0.30,
+    wall:'#A8AFA9', roof:'#6B4E3C', beam:'#4E3B2D',
+    stages:[{name:'Brunnen', yield:0, time:0, pop:0, h:11, roofH:12, floors:0, upgrade:null}] },
+
+  hall: { key:'hall', label:'Rathaus', cost:0, fixed:true,
+    stages:[{name:'Rathaus', yield:14, time:20, pop:5, h:42, roofH:22, floors:3,
+       style:'stone', wall:'#DED3B8', roof:'#3F5A6B', trim:'#8A7F68', clock:true, upgrade:null}] }
+};
+
+const TW = 68, TH = 34, DEPTH = 9;
+const P = 4;                    // Kantenlänge eines Bauabschnitts in Feldern
+const SMIN = -2, SMAX = 3;      // Weltgrenzen in Abschnitten
+const PLOT0 = 10000;            // Preis des ersten Zukaufs
+const N4 = [[1,0],[-1,0],[0,1],[0,-1]];
+
+/* Wind: einmal pro Bild berechnet, von allen Pflanzen geteilt.
+   Der Halm- und Kronenausschlag entsteht danach durch eine Scherung —
+   kein zusätzlicher Zeichenaufruf, kein zusätzlicher Speicher. */
+let wind = 0, windT = 0;
+
+const state = {
+  coins:220, tiles:new Map(), net:new Set(), tool:'road',
+  hover:null, floats:[], puffs:[], moving:null,   // angehobenes Gebäude
+  plots: new Set(['0,0','1,0','0,1','1,1']),   // Startfläche: 8x8 Felder
+  cells: [],                                   // alle freigeschalteten Felder
+  bounds: null,
+  pop: { total:0, used:0 },
+  free: 0
+};
+
+const plotKey = (gx,gy) => Math.floor(gx/P) + ',' + Math.floor(gy/P);
+const unlocked = (gx,gy) => state.plots.has(plotKey(gx,gy));
+const plotPrice = () => Math.round(PLOT0 * Math.pow(1.5, state.plots.size - 4) / 500) * 500;
+
+/* Angrenzende, noch nicht gekaufte Abschnitte */
+function offers(){
+  const out = [];
+  for (const k of state.plots){
+    const [sx,sy] = k.split(',').map(Number);
+    for (const [dx,dy] of N4){
+      const nx = sx+dx, ny = sy+dy, nk = nx+','+ny;
+      if (nx<SMIN||nx>SMAX||ny<SMIN||ny>SMAX) continue;
+      if (state.plots.has(nk) || out.some(o=>o.k===nk)) continue;
+      out.push({ k:nk, sx:nx, sy:ny });
+    }
+  }
+  return out;
+}
+
+/* Feldliste und Weltgrenzen neu bestimmen, wenn sich die Fläche ändert */
+function rebuildWorld(){
+  const cells = [];
+  let x0=1e9, x1=-1e9, y0=1e9, y1=-1e9;
+  for (const k of state.plots){
+    const [sx,sy] = k.split(',').map(Number);
+    for (let i=0;i<P;i++) for (let j=0;j<P;j++){
+      const gx = sx*P+i, gy = sy*P+j;
+      cells.push([gx,gy]);
+      const w = iso(gx,gy);
+      x0=Math.min(x0,w.x-TW/2); x1=Math.max(x1,w.x+TW/2);
+      y0=Math.min(y0,w.y-TH/2); y1=Math.max(y1,w.y+TH/2+DEPTH);
+    }
+  }
+  cells.sort((a,b)=>(a[0]+a[1])-(b[0]+b[1]));   // Malerreihenfolge
+  state.cells = cells;
+  state.bounds = { x0, x1, y0:y0-110, y1 };     // oben Luft für hohe Häuser
+}
+
+const key = (x,y) => x + ',' + y;
+const at  = (x,y) => state.tiles.get(key(x,y));
+const now = () => Date.now();
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================================================
+   2. STRASSENNETZ
+============================================================ */
+function computeNetwork(){
+  const net = new Set();
+  const hall = [...state.tiles.values()].find(b => b.type === 'hall');
+  if (!hall) return net;
+  const q = [];
+  const push = (x,y) => {
+    const k = key(x,y), t = state.tiles.get(k);
+    if (t && t.type === 'road' && !net.has(k)){ net.add(k); q.push(t); }
+  };
+  for (const [dx,dy] of N4) push(hall.x+dx, hall.y+dy);
+  while (q.length){ const c = q.pop(); for (const [dx,dy] of N4) push(c.x+dx, c.y+dy); }
+  return net;
+}
+function isConnected(b){
+  if (b.type === 'hall') return true;
+  if (!TYPES[b.type].needsRoad) return true;
+  return N4.some(([dx,dy]) => state.net.has(key(b.x+dx, b.y+dy)));
+}
+
+/* ============================================================
+   3. SPIELLOGIK
+============================================================ */
+function stageOf(b){ return TYPES[b.type].stages[b.level]; }
+function boost(b){
+  let f = 1;
+  for (const [dx,dy] of N4){ const n = at(b.x+dx,b.y+dy); if (n && TYPES[n.type].aura) f += TYPES[n.type].aura; }
+  return f;
+}
+function payout(b){
+  let y = stageOf(b).yield;
+  // Das Rathaus zieht Steuern: je mehr Einwohner die Stadt hat, desto mehr kommt herein.
+  if (b.type === 'hall') y += Math.round(state.pop.total * 1.6);
+  return Math.round(y * boost(b));
+}
+function isReady(b){ return stageOf(b).time > 0 && b.active && b.paused == null && now() >= b.done; }
+const freePop = () => state.pop.total - state.pop.used;
+function progress(b){
+  const s = stageOf(b); if (!s.time) return 1;
+  const rest = b.paused != null ? b.paused : b.done - now();
+  return Math.min(1, Math.max(0, 1 - rest/(s.time*1000)));
+}
+function build(x,y,type){
+  const t = TYPES[type];
+  if (!unlocked(x,y)) return;
+  if (at(x,y)) return flash('Das Feld ist bereits bebaut.');   // nie überbauen
+  if (state.coins < t.cost) return flash('Zu wenig Münzen für ' + t.label + '.');
+  const need = t.stages[0].staff || 0;
+  if (need > freePop())
+    return flash(t.label + ' braucht ' + need + ' freie Einwohner — ' + freePop() + ' verfügbar.');
+  state.coins -= t.cost;
+  state.tiles.set(key(x,y), { x, y, type, level:0, conn:false, paused:null,
+    invested: t.cost, done: now() + t.stages[0].time*1000, born: now() });
+  puff(x,y); refresh();
+}
+function collect(b){
+  const amount = payout(b);
+  state.coins += amount;
+  b.done = now() + stageOf(b).time*1000;
+  const p = iso(b.x,b.y), s = stageOf(b);
+  state.floats.push({ x:p.x, y:p.y - s.h - s.roofH - 24, text:'+'+amount, t:now() });
+  refresh();
+}
+function upgrade(b){
+  const cost = stageOf(b).upgrade;
+  if (cost === null) return flash(stageOf(b).name + ' ist voll ausgebaut.');
+  if (state.coins < cost) return flash('Ausbau kostet ' + cost + ' Münzen.');
+  const next = TYPES[b.type].stages[b.level+1];
+  const extra = (next.staff||0) - (stageOf(b).staff||0);
+  if (extra > freePop())
+    return flash(next.name + ' braucht ' + extra + ' Einwohner mehr — ' + freePop() + ' frei.');
+  state.coins -= cost; b.level++; b.invested = (b.invested||TYPES[b.type].cost) + cost;
+  b.done = now() + stageOf(b).time*1000; b.paused = null; b.born = now();
+  puff(b.x,b.y);
+  const ns = stageOf(b);
+  flash(ns.time
+    ? ns.name + ': ' + payout(b) + ' Münzen alle ' + ns.time + ' s.'
+    : ns.name + ' fertiggestellt.');
+  refresh();
+}
+/* Versetzen lässt Stufe, Restzeit und Investition unangetastet — es wandert
+   dasselbe Objekt auf ein anderes Feld. Straßennetz und Personal rechnet
+   refresh() danach neu, samt Einfrieren oder Fortsetzen der Produktion. */
+function moveTo(gx, gy){
+  const src = state.moving;
+  if (!src) return;
+  const b = at(src.x, src.y);
+  if (!b){ state.moving = null; return; }
+  if (gx === src.x && gy === src.y){
+    state.moving = null;
+    return flash('Verschieben abgebrochen.');
+  }
+  if (!unlocked(gx, gy)) return flash('Dieses Feld gehört noch nicht zur Stadt.');
+  if (at(gx, gy)) return flash('Zielfeld ist belegt.');
+
+  state.tiles.delete(key(src.x, src.y));
+  b.x = gx; b.y = gy;
+  state.tiles.set(key(gx, gy), b);
+  state.moving = null;
+  puff(gx, gy);
+  refresh();
+  flash(stageOf(b).name + ' versetzt.');
+}
+
+function pickUp(b){
+  if (TYPES[b.type].fixed) return flash('Das Rathaus bleibt, wo es ist.');
+  state.moving = { x:b.x, y:b.y };
+  flash(stageOf(b).name + ' angehoben — freies Zielfeld antippen.');
+}
+
+function demolish(b){
+  if (TYPES[b.type].fixed) return flash('Das Rathaus bleibt stehen.');
+  state.coins += Math.floor((b.invested || TYPES[b.type].cost)/2);
+  state.tiles.delete(key(b.x,b.y)); puff(b.x,b.y); refresh();
+}
+function puff(x,y){
+  if (reduceMotion) return;
+  const p = iso(x,y);
+  for (let i=0;i<8;i++) state.puffs.push({ x:p.x+(Math.random()-.5)*38, y:p.y+(Math.random()-.5)*15,
+    r:3+Math.random()*5, t:now() });
+}
+
+/* ============================================================
+   4. ISOMETRIE
+============================================================ */
+/* Kamera: cam.x/cam.y ist der Weltpunkt in der Bildschirmmitte, cam.z der Zoom. */
+const cam = { x:0, y:80, z:1 };
+const ZMIN = 0.35, ZMAX = 3.2;
+function bx(){ return state.bounds ? (state.bounds.x1 - state.bounds.x0)/2 + 60 : 300; }
+
+function iso(gx,gy){ return { x:(gx-gy)*TW/2, y:(gx+gy)*TH/2 }; }
+
+function toWorld(sx,sy){
+  return { x:(sx - W/2)/cam.z + cam.x, y:(sy - H/2)/cam.z + cam.y };
+}
+function toTile(sx,sy){
+  const w = toWorld(sx,sy);
+  return { x: Math.floor(w.y/TH + w.x/TW + 0.5), y: Math.floor(w.y/TH - w.x/TW + 0.5) };
+}
+function worldCenter(){
+  const b = state.bounds;
+  return b ? { x:(b.x0+b.x1)/2, y:(b.y0+b.y1)/2 } : { x:0, y:80 };
+}
+function clampCam(){
+  const b = state.bounds; if (!b) return;
+  const m = 80/cam.z;
+  cam.x = Math.max(b.x0-m, Math.min(b.x1+m, cam.x));
+  cam.y = Math.max(b.y0-m, Math.min(b.y1+m, cam.y));
+}
+/* Zoomen so, dass der Weltpunkt unter dem Zeiger stehen bleibt. */
+function zoomAt(sx, sy, factor){
+  const before = toWorld(sx,sy);
+  cam.z = Math.max(ZMIN, Math.min(ZMAX, cam.z*factor));
+  const after = toWorld(sx,sy);
+  cam.x += before.x - after.x;
+  cam.y += before.y - after.y;
+  clampCam();
+}
+function fitZoom(){
+  const b = state.bounds; if (!b) return 1;
+  return Math.max(ZMIN, Math.min(2,
+    Math.min((W-24)/(b.x1-b.x0), (H-210)/(b.y1-b.y0))));
+}
+function resetView(){ const c = worldCenter(); cam.z = fitZoom(); cam.x = c.x; cam.y = c.y; clampCam(); }
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+let W=0, H=0, DPR=1, sky=null;
+
+function resize(){
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  const ss = Math.min(3, DPR + 1);
+  if (ss !== SS){ SS = ss; cache.clear(); }
+  W = innerWidth; H = innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  sky = ctx.createRadialGradient(W/2, H*0.42, 40, W/2, H*0.42, Math.max(W,H)*0.78);
+  sky.addColorStop(0,'#15252F'); sky.addColorStop(1,'#0A141B');
+  if (!started) resetView(); else clampCam();
+}
+let started = false;
+addEventListener('resize', resize);
+
+/* ============================================================
+   5. GEOMETRIE-HELFER
+============================================================ */
+function diamond(g,cx,cy,w,h){
+  g.beginPath(); g.moveTo(cx,cy-h/2); g.lineTo(cx+w/2,cy);
+  g.lineTo(cx,cy+h/2); g.lineTo(cx-w/2,cy); g.closePath();
+}
+function poly(g, pts){
+  g.beginPath(); g.moveTo(pts[0][0],pts[0][1]);
+  for (let i=1;i<pts.length;i++) g.lineTo(pts[i][0],pts[i][1]);
+  g.closePath();
+}
+function shade(hex,amt){
+  const n = parseInt(hex.slice(1),16);
+  return 'rgb(' + [n>>16,(n>>8)&255,n&255]
+    .map(v => Math.max(0,Math.min(255,Math.round(v+amt)))).join(',') + ')';
+}
+const mid = (a,b,t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+
+/* ============================================================
+   6. GEBÄUDE ZEICHNEN
+   Alles sind Canvas-Pfade, also echte Vektorgeometrie.
+   Jede Kombination aus Typ/Stufe/Zustand wird EINMAL in ein
+   Offscreen-Canvas gerendert und danach nur noch kopiert.
+============================================================ */
+const cache = new Map();
+/* Die Zeichenroutine meldet, wo der Schornstein endet — so muss die
+   Rauchquelle nicht nachgerechnet werden und kann nicht auseinanderlaufen. */
+let lastChimney = null;
+let SS = 2;   // Überabtastung der Sprites, wird in resize() an das Gerät angepasst
+
+/* Der Rahmen wächst mit dem Gebäude — ein Turm braucht mehr Luft als eine Hütte. */
+function spriteBox(type, level){
+  if (type === 'well') return { w:120, h:150, ax:60, ay:112 };
+  const st = TYPES[type].stages[level];
+  const ay = Math.ceil(st.h + st.roofH + 62);
+  return { w:150, h:ay + 44, ax:75, ay };
+}
+
+function sprite(type, level, mode){
+  const k = type+'|'+level+'|'+mode;
+  if (cache.has(k)) return cache.get(k);
+  if (cache.size > 64) cache.clear();
+  const box = spriteBox(type, level);
+  const off = document.createElement('canvas');
+  off.width = box.w*SS; off.height = box.h*SS;
+  const g = off.getContext('2d');
+  g.scale(SS,SS);
+  g.translate(box.ax, box.ay);
+  paintAny(g, type, level, mode);
+  const s = { cv:off, w:box.w, h:box.h, ax:box.ax, ay:box.ay, smoke:lastChimney };
+  cache.set(k, s);
+  return s;
+}
+
+function paintHouse(g, type, level, mode){
+  const t = TYPES[type], s = t.stages[level];
+  const st = s.style || 'timber';
+  const wallC = s.wall || t.wall, roofC = s.roof || t.roof, trimC = s.trim || t.beam;
+  const bw = TW*0.55, bh = TH*0.55;
+  const h = s.h, rH = s.roofH;
+  const dim = mode === 'cut' ? -40 : 0;
+  const lit = mode === 'lit';
+  const glass = lit ? '#FFCE69' : (mode === 'cut' ? '#3A464C' : '#7C8E96');
+
+  g.fillStyle = 'rgba(0,0,0,.3)';
+  diamond(g, 5, 4, bw*1.25, bh*1.25); g.fill();
+
+  const L=[-bw/2,0], B=[0,bh/2], R=[bw/2,0], T=[0,-bh/2];
+  const up = p => [p[0], p[1]-h];
+  // Flächenkoordinaten: a läuft entlang der Wand, v von 0 (Boden) bis 1 (Traufe)
+  const faceL = (a,v) => [L[0]+(B[0]-L[0])*a, L[1]+(B[1]-L[1])*a - h*v];
+  const faceR = (a,v) => [B[0]+(R[0]-B[0])*a, B[1]+(R[1]-B[1])*a - h*v];
+  const band = (face,a0,v0,a1,v1) => { poly(g,[face(a0,v0),face(a1,v0),face(a1,v1),face(a0,v1)]); g.fill(); };
+
+  /* ---- Arkologie: der Turm verjüngt sich nach oben, also eigene Flächen ---- */
+  if (st === 'arc'){
+    const tf = 0.62;                       // Maßstab der Deckfläche
+    const kAt = v => 1 - v + v*tf;
+    const mk = (p0,p1) => (a,v) => {
+      const k = kAt(v);
+      return [(p0[0]+(p1[0]-p0[0])*a)*k, (p0[1]+(p1[1]-p0[1])*a)*k - h*v];
+    };
+    const fL = mk(L,B), fR = mk(B,R);
+    const bd = (f,a0,v0,a1,v1) => { poly(g,[f(a0,v0),f(a1,v0),f(a1,v1),f(a0,v1)]); g.fill(); };
+
+    g.fillStyle = shade(wallC,-4+dim);  poly(g,[fL(0,0),fL(1,0),fL(1,1),fL(0,1)]); g.fill();
+    g.fillStyle = shade(wallC,-44+dim); poly(g,[fR(0,0),fR(1,0),fR(1,1),fR(0,1)]); g.fill();
+    g.fillStyle = shade(wallC,16+dim);  diamond(g, 0, -h, bw*tf, bh*tf); g.fill();
+
+    // Fensterbänder, jede dritte Ebene begrünt
+    for (let f=1; f<=s.floors; f++){
+      const v = f/(s.floors+1);
+      for (const [f2,d] of [[fL,-4],[fR,-34]]){
+        g.fillStyle = lit ? 'rgba(255,206,105,.92)' : shade(glass, d/3+dim);
+        bd(f2, 0.07, v-0.020, 0.93, v+0.020);
+        if (f % 3 === 0){
+          g.fillStyle = shade('#5F8F62', d+dim);
+          bd(f2, 0.04, v+0.022, 0.96, v+0.040);
+        }
+      }
+    }
+    // leuchtende Vorderkante
+    g.strokeStyle = lit ? 'rgba(242,176,53,.8)' : shade(trimC,-20+dim);
+    g.lineWidth = 1.8;
+    g.beginPath(); g.moveTo(fL(1,0)[0],fL(1,0)[1]); g.lineTo(fL(1,1)[0],fL(1,1)[1]); g.stroke();
+
+    // Schweberring
+    const rv = 0.70, rk = kAt(rv);
+    g.strokeStyle = lit ? 'rgba(127,216,208,.8)' : 'rgba(127,216,208,.32)';
+    g.lineWidth = 2.4;
+    g.beginPath(); g.ellipse(0, -h*rv, bw*rk*0.88, bh*rk*0.88, 0, 0, Math.PI*2); g.stroke();
+
+    // Krone mit schwebender Kugel
+    g.fillStyle = shade(roofC,14+dim); diamond(g, 0, -h-5, bw*tf*0.74, bh*tf*0.74); g.fill();
+    g.strokeStyle = shade(trimC,-10+dim); g.lineWidth = 2.2;
+    g.beginPath(); g.moveTo(0,-h-5); g.lineTo(0,-h-34); g.stroke();
+    // zwei Höhenringe am Schaft
+    g.strokeStyle = lit ? 'rgba(242,176,53,.55)' : 'rgba(127,216,208,.42)';
+    g.lineWidth = 1.2;
+    for (const yy of [-h-16, -h-26]){
+      g.beginPath(); g.ellipse(0, yy, 6.5, 2.4, 0, 0, Math.PI*2); g.stroke();
+    }
+    g.fillStyle = lit ? '#F2B035' : '#7FD8D0';
+    g.beginPath(); g.arc(0,-h-42,4.4,0,7); g.fill();
+    g.strokeStyle = lit ? 'rgba(242,176,53,.5)' : 'rgba(127,216,208,.38)';
+    g.lineWidth = 1.3;
+    g.beginPath(); g.ellipse(0,-h-42,11,4,0,0,Math.PI*2); g.stroke();
+    return;
+  }
+
+  /* ---- Fusionswerk: Reaktorkuppel mit Feldring, alles eigene Geometrie ---- */
+  if (st === 'fusion'){
+    const fL = (a,v) => [L[0]+(B[0]-L[0])*a, L[1]+(B[1]-L[1])*a - h*v];
+    const fR = (a,v) => [B[0]+(R[0]-B[0])*a, B[1]+(R[1]-B[1])*a - h*v];
+    const bd = (f,a0,v0,a1,v1) => { poly(g,[f(a0,v0),f(a1,v0),f(a1,v1),f(a0,v1)]); g.fill(); };
+    const faces2 = [[fL,-6],[fR,-42]];
+    const glow = lit ? 'rgba(242,176,53,' : 'rgba(111,217,230,';
+
+    // Betonplatte als Standfläche
+    g.fillStyle = shade('#2B3742', dim); diamond(g, 0, 1, bw*1.26, bh*1.26); g.fill();
+    g.fillStyle = shade('#222D37', dim); diamond(g, 0, 3.4, bw*1.26, bh*1.26); g.fill();
+
+    // Zylindrischer Körper
+    for (const [f,d] of faces2){
+      g.fillStyle = shade(wallC, d+dim); bd(f, 0, 0, 1, 1);
+      // waagerechte Panelfugen
+      g.fillStyle = 'rgba(0,0,0,.22)';
+      for (let i=1;i<s.floors*2;i++) bd(f, 0, i/(s.floors*2)-0.005, 1, i/(s.floors*2)+0.005);
+      // senkrechte Streben
+      g.fillStyle = shade(wallC, d+14+dim);
+      for (const a of [0.02,0.5,0.98]) bd(f, a-0.022, 0, a+0.022, 1);
+      // leuchtende Bänder
+      for (let i=1;i<=s.floors;i++){
+        const v = i/(s.floors+1);
+        g.fillStyle = glow + (d < -20 ? '.42)' : '.8)');
+        bd(f, 0.08, v-0.014, 0.92, v+0.014);
+      }
+    }
+
+    // Kuppel über dem Reaktor
+    const rx = bw*0.46, domeH = 27;
+    g.fillStyle = shade(roofC, 10+dim);
+    g.beginPath();
+    g.moveTo(-rx, -h);
+    g.bezierCurveTo(-rx, -h-domeH*1.35, rx, -h-domeH*1.35, rx, -h);
+    g.closePath(); g.fill();
+    g.fillStyle = shade(roofC, -24+dim);
+    g.beginPath(); g.ellipse(0, -h, rx, bh*0.30, 0, 0, Math.PI); g.fill();
+    // Meridianrippen
+    g.strokeStyle = 'rgba(0,0,0,.26)'; g.lineWidth = 1;
+    for (const t of [-0.55,0,0.55]){
+      g.beginPath(); g.moveTo(rx*t, -h);
+      g.bezierCurveTo(rx*t*1.15, -h-domeH*0.95, rx*t*0.35, -h-domeH*1.16, 0, -h-domeH*1.02);
+      g.stroke();
+    }
+    // Kern
+    g.fillStyle = lit ? '#F2B035' : '#6FD9E6';
+    g.beginPath(); g.ellipse(0, -h-domeH*0.98, 5.2, 3.4, 0, 0, Math.PI*2); g.fill();
+    g.strokeStyle = glow + '.45)'; g.lineWidth = 1.4;
+    g.beginPath(); g.ellipse(0, -h-domeH*0.98, 11, 4.6, 0, 0, Math.PI*2); g.stroke();
+
+    // Feldring um den Bau
+    const rv = 0.62;
+    g.strokeStyle = glow + (lit ? '.85)' : '.4)'); g.lineWidth = 3;
+    g.beginPath(); g.ellipse(0, -h*rv, bw*0.72, bh*0.72, 0, 0, Math.PI*2); g.stroke();
+    g.strokeStyle = glow + '.25)'; g.lineWidth = 5.5;
+    g.beginPath(); g.ellipse(0, -h*rv, bw*0.72, bh*0.72, 0, 0, Math.PI*2); g.stroke();
+
+    // Zwei Kühltürme
+    for (const [cxx, cs] of [[-bw*0.60, 0.72], [bw*0.58, 0.60]]){
+      const cr = 6*cs, cH = 34*cs, cy = bh*0.16;
+      g.fillStyle = shade('#8D98A2', -34+dim);
+      g.beginPath(); g.ellipse(cxx, cy, cr, cr*0.5, 0, 0, Math.PI);
+      g.lineTo(cxx-cr*0.82, cy-cH);
+      g.ellipse(cxx, cy-cH, cr*0.82, cr*0.41, 0, Math.PI, 0, true);
+      g.closePath(); g.fill();
+      g.fillStyle = shade('#A6B0B8', 4+dim);
+      g.beginPath(); g.ellipse(cxx, cy-cH, cr*0.82, cr*0.41, 0, 0, Math.PI*2); g.fill();
+      g.fillStyle = shade('#2E3A44', dim);
+      g.beginPath(); g.ellipse(cxx, cy-cH, cr*0.58, cr*0.29, 0, 0, Math.PI*2); g.fill();
+      g.strokeStyle = glow + '.35)'; g.lineWidth = 1.2;
+      g.beginPath(); g.ellipse(cxx, cy-cH*0.55, cr*0.95, cr*0.48, 0, 0, Math.PI*2); g.stroke();
+    }
+    return;
+  }
+
+  // ---- Wandflächen: links im Licht, rechts im Schatten ----
+  g.fillStyle = shade(wallC, -4+dim);  poly(g,[L,B,up(B),up(L)]); g.fill();
+  g.fillStyle = shade(wallC, -42+dim); poly(g,[B,R,up(R),up(B)]); g.fill();
+
+  const faces = [[faceL,-4],[faceR,-32]];
+  const sock = (st === 'modern' || st === 'glass') ? 0
+              : (st === 'brick' || st === 'plant') ? 0.10 : 0.15;
+
+  // ---- Sockel ----
+  if (sock){
+    for (const [face,d] of faces){
+      g.fillStyle = shade(st==='rustic' ? '#6E6A5C' : '#7A7367', d/2+dim);
+      band(face,0,0,1,sock);
+    }
+    g.fillStyle = 'rgba(0,0,0,.16)';
+    for (let i=1;i<5;i++) band(faceL,i/5-0.006,0,i/5+0.006,sock);
+  }
+
+  /* ==================== FASSADEN NACH EPOCHE ==================== */
+  if (st === 'rustic'){
+    // Senkrechte Bretter, ein Eckpfosten, kleine Luke statt Fenster
+    for (const [face,d] of faces){
+      g.fillStyle = 'rgba(60,44,28,.22)';
+      for (let i=1;i<8;i++) band(face,i/8-0.008,sock,i/8+0.008,1);
+      g.fillStyle = shade(trimC, d+dim);
+      band(face,0,0.95,1,1);
+      band(face,0.0,sock,0.05,1); band(face,0.95,sock,1,1);
+    }
+    g.fillStyle = shade('#6B4A33',-4+dim); band(faceL,0.26,sock,0.46,sock+0.48);
+    g.fillStyle = shade(trimC,-8+dim);
+    band(faceL,0.24,sock+0.46,0.48,sock+0.52);
+    g.fillStyle = lit ? '#FFCE69' : shade(glass,-14+dim);
+    band(faceL,0.66,0.52,0.82,0.74);
+    g.fillStyle = shade(trimC,-2+dim);
+    band(faceL,0.735,0.52,0.755,0.74); band(faceL,0.66,0.62,0.82,0.635);
+    g.fillStyle = lit ? 'rgba(255,206,105,.75)' : shade(glass,-34+dim);
+    band(faceR,0.55,0.52,0.70,0.72);
+  }
+
+  if (st === 'timber'){
+    const beam = (face,a0,v0,a1,v1,w) => {
+      const q = w || 0.028;
+      poly(g,[face(a0-q,v0),face(a0+q,v0),face(a1+q,v1),face(a1-q,v1)]); g.fill();
+    };
+    for (const [face,d] of faces){
+      g.fillStyle = shade(trimC, d+dim);
+      band(face,0,sock,1,sock+0.05);
+      band(face,0,0.95,1,1);
+      for (let f=1; f<s.floors; f++){
+        const v = sock + (1-sock)*f/s.floors;
+        band(face,0,v-0.025,1,v+0.025);
+      }
+      for (const a of [0.04,0.5,0.96]) beam(face,a,sock,a,1);
+      if (s.floors >= 2){
+        beam(face,0.06,sock+0.06,0.30,sock+(1-sock)/s.floors-0.03,0.020);
+        beam(face,0.94,sock+0.06,0.70,sock+(1-sock)/s.floors-0.03,0.020);
+      }
+    }
+  }
+
+  if (st === 'stone'){
+    // Putzfassade mit Eckquadern, Gurtgesims und Traufgesims
+    for (const [face,d] of faces){
+      g.fillStyle = shade(trimC, d+dim);
+      for (let i=0;i<7;i++){
+        const v0 = sock+(1-sock)*i/7, v1 = sock+(1-sock)*(i+0.5)/7;
+        const q = i%2 ? 0.055 : 0.085;
+        band(face,0.002,v0,q,v1); band(face,1-q,v0,0.998,v1);
+      }
+      for (let f=1; f<s.floors; f++){
+        const v = sock + (1-sock)*f/s.floors;
+        g.fillStyle = shade(trimC, d+8+dim);
+        band(face,0,v-0.014,1,v+0.014);
+      }
+      g.fillStyle = shade(trimC, d+14+dim);
+      band(face,-0.02,0.94,1.02,1.0);
+    }
+  }
+
+  if (st === 'modern'){
+    // Sichtbeton mit Fensterbändern, Balkonen und Schaufensterfront
+    for (const [face,d] of faces){
+      g.fillStyle = shade(trimC, d-14+dim);
+      for (let f=1; f<s.floors; f++) band(face,0,sock+(1-sock)*f/s.floors-0.008,1,sock+(1-sock)*f/s.floors+0.008);
+    }
+    g.fillStyle = lit ? 'rgba(255,206,105,.85)' : shade(glass,-16+dim);
+    band(faceL,0.08,0.02,0.92,0.20);
+    g.fillStyle = lit ? 'rgba(255,206,105,.55)' : shade(glass,-40+dim);
+    band(faceR,0.08,0.02,0.92,0.20);
+  }
+
+  if (st === 'brick'){
+    /* Backstein-Fabrik: Lisenen gliedern die Wand in Achsen, dazwischen hohe
+       Sprossenfenster mit Segmentbogen. Oben ein Zahnschnitt-Gesims. */
+    const bays = 4;
+    for (const [face,d] of faces){
+      // Ziegelschichten
+      g.fillStyle = 'rgba(0,0,0,.10)';
+      for (let i=1;i<16;i++) band(face,0,sock+(1-sock)*i/16-0.004,1,sock+(1-sock)*i/16+0.004);
+      // Lisenen zwischen den Achsen
+      g.fillStyle = shade(wallC, d+16+dim);
+      for (let i=0;i<=bays;i++){
+        const a = 0.03 + 0.94*i/bays;
+        band(face, a-0.026, sock, a+0.026, 0.99);
+      }
+      // Fenster in den Achsen
+      for (let i=0;i<bays;i++){
+        const a0 = 0.03+0.94*i/bays+0.030, a1 = 0.03+0.94*(i+1)/bays-0.030;
+        for (let f=0; f<s.floors; f++){
+          const v0 = sock+(1-sock)*(f+0.16)/s.floors, v1 = sock+(1-sock)*(f+0.86)/s.floors;
+          g.fillStyle = shade(trimC, d-24+dim);
+          band(face, a0-0.012, v0-0.012, a1+0.012, v1+0.012);
+          g.fillStyle = lit ? '#FFCE69' : shade(glass, d/3+dim);
+          band(face, a0, v0, a1, v1);
+          g.fillStyle = 'rgba(30,26,22,.5)';   // Sprossen
+          band(face, (a0+a1)/2-0.006, v0, (a0+a1)/2+0.006, v1);
+          for (let r=1;r<3;r++) band(face, a0, v0+(v1-v0)*r/3-0.005, a1, v0+(v1-v0)*r/3+0.005);
+          g.fillStyle = shade(trimC, d+dim);   // heller Fenstersturz
+          band(face, a0-0.016, v1+0.012, a1+0.016, v1+0.028);
+        }
+      }
+      // Zahnschnitt und Traufgesims
+      g.fillStyle = shade(wallC, d+24+dim);
+      for (let i=0;i<11;i++) band(face, 0.03+0.94*i/11, 0.90, 0.03+0.94*i/11+0.042, 0.935);
+      g.fillStyle = shade(trimC, d+dim);
+      band(face,-0.02,0.945,1.02,0.995);
+    }
+  }
+
+  if (st === 'plant'){
+    /* Montagewerk: Trapezblech, Rolltor, hochliegendes Fensterband. */
+    for (const [face,d] of faces){
+      g.fillStyle = 'rgba(0,0,0,.13)';                  // senkrechte Sicken
+      for (let i=1;i<20;i++) band(face, i/20-0.005, sock, i/20+0.005, 0.99);
+      for (let i=0;i<14;i++){                           // Warnstreifen am Sockel
+        g.fillStyle = i%2 ? shade(trimC, d+dim) : shade('#2E3438', d+dim);
+        band(face, i/14, 0, (i+1)/14, sock);
+      }
+      g.fillStyle = shade(trimC, d-22+dim);             // Fensterband oben
+      band(face, 0.05, 0.66, 0.95, 0.86);
+      for (let i=0;i<7;i++){
+        g.fillStyle = lit ? '#FFCE69' : shade(glass, d/3+dim);
+        band(face, 0.065+0.87*i/7+0.006, 0.675, 0.065+0.87*(i+1)/7-0.006, 0.845);
+      }
+      g.fillStyle = shade(wallC, d+16+dim);             // Traufblech
+      band(face, -0.02, 0.94, 1.02, 1.0);
+    }
+    // Rolltor mit orangefarbenem Rahmen
+    g.fillStyle = shade(trimC,-4+dim); band(faceL, 0.14, sock, 0.60, sock+0.46);
+    for (let i=0;i<8;i++){
+      g.fillStyle = i%2 ? shade('#8C9692',-6+dim) : shade('#79837F',-6+dim);
+      band(faceL, 0.165, sock+0.02+0.42*i/8, 0.575, sock+0.02+0.42*(i+1)/8-0.004);
+    }
+    // Nebentür und Lampe
+    g.fillStyle = shade('#2E3438',-6+dim); band(faceL, 0.70, sock, 0.84, sock+0.30);
+    g.fillStyle = lit ? 'rgba(255,206,105,.95)' : shade(glass,-20+dim);
+    band(faceL, 0.665, sock+0.33, 0.70, sock+0.37);
+  }
+
+  if (st === 'glass'){
+    // Vorhangfassade — einzelne Büros beleuchtet, das wirkt lebendiger als eine Leuchtwand
+    const cols = 6;
+    for (const [face,d] of faces){
+      g.fillStyle = shade(trimC, d-30+dim);
+      band(face,0,0,1,1);
+      for (let f=0; f<s.floors; f++){
+        const v0 = 0.03 + 0.94*f/s.floors, v1 = 0.03 + 0.94*(f+1)/s.floors;
+        for (let i=0;i<cols;i++){
+          const on = lit && ((f*5 + i*3 + (d < -20 ? 2 : 0)) % 7) !== 0;
+          g.fillStyle = on ? '#FFCE69' : shade(glass, d/3 + dim);
+          band(face, 0.06+0.88*i/cols+0.007, v0+0.006, 0.06+0.88*(i+1)/cols-0.007, v1-0.006);
+        }
+      }
+      g.fillStyle = shade(wallC, d+8+dim);
+      band(face,0,0,0.06,1); band(face,0.94,0,1,1);
+    }
+    // Eingangshalle mit Vordach
+    g.fillStyle = shade(trimC,-10+dim); band(faceL,0.18,0,0.54,0.11);
+    g.fillStyle = lit ? 'rgba(255,222,152,.95)' : shade(glass,-4+dim);
+    band(faceL,0.21,0.008,0.51,0.095);
+    const k0 = faceL(0.14,0.115), k1 = faceL(0.58,0.115);
+    g.fillStyle = shade(wallC,-20+dim);
+    poly(g,[k0,k1,[k1[0]-7,k1[1]+3.5],[k0[0]-7,k0[1]+3.5]]); g.fill();
+  }
+
+  /* ==================== FENSTER ==================== */
+  if (st === 'timber' || st === 'stone'){
+    const win = (face,a,v,wA,wV,d) => {
+      g.fillStyle = shade(trimC, d+dim);
+      band(face,a-wA-.014,v-wV-.022,a+wA+.014,v+wV+.022);
+      g.fillStyle = lit ? glass : shade(glass, d/2+dim);
+      band(face,a-wA,v-wV,a+wA,v+wV);
+      g.fillStyle = 'rgba(30,26,22,.55)';
+      band(face,a-.006,v-wV,a+.006,v+wV); band(face,a-wA,v-.008,a+wA,v+.008);
+      if (st === 'timber'){
+        g.fillStyle = shade('#5E7060', d+dim);
+        band(face,a-wA-.055,v-wV,a-wA-.014,v+wV);
+        band(face,a+wA+.014,v-wV,a+wA+.055,v+wV);
+      } else {
+        g.fillStyle = shade(trimC, d+16+dim);   // Fensterbank
+        band(face,a-wA-.02,v-wV-.04,a+wA+.02,v-wV-.022);
+      }
+    };
+    for (let f=0; f<s.floors; f++){
+      const v = sock + (1-sock)*(f+0.55)/s.floors;
+      const wV = Math.min(0.13, (1-sock)/s.floors*0.34);
+      if (f === 0){
+        g.fillStyle = shade(trimC,-4+dim); band(faceL,0.16,sock,0.40,v+wV+0.06);
+        g.fillStyle = shade('#6B4A33',-6+dim); band(faceL,0.19,sock,0.37,v+wV+0.03);
+        g.fillStyle = 'rgba(255,220,150,.8)'; band(faceL,0.345,v-0.02,0.358,v-0.005);
+        win(faceL,0.72,v,0.09,wV,-4);
+      } else { win(faceL,0.28,v,0.09,wV,-4); win(faceL,0.72,v,0.09,wV,-4); }
+      win(faceR,0.35,v,0.085,wV,-30); win(faceR,0.72,v,0.085,wV,-30);
+    }
+  }
+
+  if (st === 'modern'){
+    for (let f=1; f<s.floors; f++){
+      const v = sock + (1-sock)*(f+0.5)/s.floors, wV = (1-sock)/s.floors*0.26;
+      for (const [face,d] of faces){
+        g.fillStyle = shade(trimC, d-6+dim);
+        band(face,0.08,v-wV-0.02,0.92,v+wV+0.02);
+        g.fillStyle = lit ? '#FFCE69' : shade(glass, d/3+dim);
+        band(face,0.10,v-wV,0.90,v+wV);
+        g.fillStyle = 'rgba(40,46,50,.5)';
+        for (const a of [0.31,0.52,0.73]) band(face,a-.007,v-wV,a+.007,v+wV);
+      }
+      // auskragender Balkon an der Sonnenseite
+      const p0 = faceL(0.14, v-wV-0.03), p1 = faceL(0.62, v-wV-0.03);
+      const ox = -8, oy = 4;
+      const q0 = [p0[0]+ox,p0[1]+oy], q1 = [p1[0]+ox,p1[1]+oy];
+      g.fillStyle = shade(wallC,-16+dim); poly(g,[p0,p1,q1,q0]); g.fill();
+      g.fillStyle = shade(wallC,-40+dim);
+      poly(g,[q0,q1,[q1[0],q1[1]+3],[q0[0],q0[1]+3]]); g.fill();
+      g.strokeStyle = 'rgba(150,170,180,.55)'; g.lineWidth = 1;
+      const rail = 8;
+      g.beginPath(); g.moveTo(q0[0],q0[1]-rail); g.lineTo(q1[0],q1[1]-rail); g.stroke();
+      for (let i=0;i<=6;i++){ const m = mid(q0,q1,i/6);
+        g.beginPath(); g.moveTo(m[0],m[1]); g.lineTo(m[0],m[1]-rail); g.stroke(); }
+    }
+  }
+
+  /* ==================== DACH ==================== */
+  if (st === 'brick'){
+    /* Sheddach: die klassische Fabrikform, Nordlicht über der Halle. */
+    const par = 4;
+    for (const [face,d] of faces){
+      g.fillStyle = shade(trimC, d+dim);
+      poly(g,[face(0,1),face(1,1),[face(1,1)[0],face(1,1)[1]-par],[face(0,1)[0],face(0,1)[1]-par]]); g.fill();
+    }
+    const top = -h-par;
+    g.fillStyle = shade(roofC, 8+dim); diamond(g, 0, top, bw, bh); g.fill();
+    // drei Zahnreihen quer über die Dachfläche
+    for (let i=0;i<3;i++){
+      const u0 = 0.10+i*0.30, u1 = u0+0.20;
+      const e0 = [-bw/2+bw*u0, top+bh/2-bh*u0], e1 = [-bw/2+bw*u1, top+bh/2-bh*u1];
+      const q0 = [e0[0]+bw*0.34, e0[1]+bh*0.34], q1 = [e1[0]+bw*0.34, e1[1]+bh*0.34];
+      const rise = rH;
+      g.fillStyle = shade(roofC,-18+dim);        // geneigte Fläche
+      poly(g,[e0,e1,[e1[0],e1[1]-rise],[e0[0],e0[1]-rise]]); g.fill();
+      g.fillStyle = lit ? 'rgba(255,206,105,.85)' : shade(glass,-10+dim);   // Oberlicht
+      poly(g,[[e0[0],e0[1]-rise],[e1[0],e1[1]-rise],[q1[0],q1[1]-rise],[q0[0],q0[1]-rise]]); g.fill();
+      g.strokeStyle = 'rgba(30,34,38,.55)'; g.lineWidth = 0.9;
+      for (let k=1;k<4;k++){
+        const a = mid([e0[0],e0[1]-rise],[e1[0],e1[1]-rise],k/4);
+        const b2 = mid([q0[0],q0[1]-rise],[q1[0],q1[1]-rise],k/4);
+        g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b2[0],b2[1]); g.stroke();
+      }
+      g.fillStyle = shade(roofC,-34+dim);        // Rückwand des Zahns
+      poly(g,[q0,q1,[q1[0],q1[1]-rise],[q0[0],q0[1]-rise]]); g.fill();
+    }
+    // hoher Fabrikschornstein aus Ziegel
+    const sx2 = -bw*0.30, sy2 = top + bh*0.22, sh2 = 40, sw2 = 4.6;
+    g.fillStyle = shade('#7E3E30',-6+dim);
+    poly(g,[[sx2-sw2,sy2],[sx2,sy2+sw2*0.5],[sx2,sy2+sw2*0.5-sh2],[sx2-sw2,sy2-sh2]]); g.fill();
+    g.fillStyle = shade('#7E3E30',-40+dim);
+    poly(g,[[sx2,sy2+sw2*0.5],[sx2+sw2,sy2],[sx2+sw2,sy2-sh2],[sx2,sy2+sw2*0.5-sh2]]); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.14)';
+    for (let i=1;i<7;i++){
+      const yy = sy2 - sh2*i/7;
+      poly(g,[[sx2-sw2,yy],[sx2,yy+sw2*0.5],[sx2,yy+sw2*0.5+1.6],[sx2-sw2,yy+1.6]]); g.fill();
+    }
+    g.fillStyle = shade('#C9B48C',-4+dim);   // heller Abschlussring
+    diamond(g, sx2, sy2-sh2, sw2*2.6, sw2*1.3); g.fill();
+    lastChimney = [sx2, sy2-sh2-2];
+    return;
+  }
+
+  if (st === 'plant'){
+    // Flachdach mit Lüftern, Rohrtrasse und Silo
+    const par = 5, top = -h-par;
+    for (const [face,d] of faces){
+      g.fillStyle = shade(wallC, d+18+dim);
+      poly(g,[face(0,1),face(1,1),[face(1,1)[0],face(1,1)[1]-par],[face(0,1)[0],face(0,1)[1]-par]]); g.fill();
+    }
+    g.fillStyle = shade(roofC, 8+dim); diamond(g, 0, top, bw, bh); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.16)'; g.lineWidth = 1;
+    for (const f of [0.4,0.7]){ diamond(g, 0, top, bw*f, bh*f); g.stroke(); }
+
+    const roofBox = (px,py,rw,rh,col) => {
+      const w2 = bw*rw, h2 = bh*rw;
+      g.fillStyle = shade(col,-14+dim);
+      poly(g,[[px-w2/2,py],[px,py+h2/2],[px,py+h2/2-rh],[px-w2/2,py-rh]]); g.fill();
+      g.fillStyle = shade(col,-48+dim);
+      poly(g,[[px,py+h2/2],[px+w2/2,py],[px+w2/2,py-rh],[px,py+h2/2-rh]]); g.fill();
+      g.fillStyle = shade(col,10+dim); diamond(g,px,py-rh,w2,h2); g.fill();
+    };
+    // Rohrtrasse quer über das Dach
+    g.strokeStyle = shade(trimC,-10+dim); g.lineWidth = 3;
+    g.beginPath(); g.moveTo(-bw*0.30, top+bh*0.16); g.lineTo(bw*0.30, top-bh*0.16); g.stroke();
+    // Lüfterkästen
+    roofBox(-bw*0.24, top+bh*0.20, 0.26, 9, wallC);
+    roofBox( bw*0.02, top+bh*0.02, 0.22, 7, wallC);
+    roofBox( bw*0.26, top+bh*0.16, 0.20, 11, trimC);
+    // Silo
+    const sxx = -bw*0.06, syy = top - bh*0.20, sr = 7, sH = 22;
+    g.fillStyle = shade('#B4BAB6',-32+dim);
+    g.beginPath(); g.ellipse(sxx, syy, sr, sr*0.5, 0, 0, Math.PI);
+    g.lineTo(sxx-sr, syy-sH);
+    g.ellipse(sxx, syy-sH, sr, sr*0.5, 0, Math.PI, 0, true);
+    g.closePath(); g.fill();
+    g.fillStyle = shade('#CBD1CD',6+dim);
+    g.beginPath(); g.ellipse(sxx, syy-sH, sr, sr*0.5, 0, 0, Math.PI*2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1;
+    for (let i=1;i<4;i++){
+      g.beginPath(); g.ellipse(sxx, syy-sH*i/4, sr, sr*0.5, 0, 0, Math.PI); g.stroke();
+    }
+    g.fillStyle = shade(trimC,dim);
+    g.beginPath(); g.ellipse(sxx, syy-sH-1, sr*0.4, sr*0.2, 0, 0, Math.PI*2); g.fill();
+    return;
+  }
+
+  if (st === 'modern' || st === 'glass'){
+    // Flachdach mit Attika
+    const par = 6;
+    for (const [face,d] of faces){
+      g.fillStyle = shade(wallC, d+10+dim);
+      poly(g,[face(0,1),face(1,1),[face(1,1)[0],face(1,1)[1]-par],[face(0,1)[0],face(0,1)[1]-par]]); g.fill();
+    }
+    g.fillStyle = shade(wallC, 16+dim); diamond(g, 0, -h-par, bw, bh); g.fill();
+    g.fillStyle = shade(roofC, dim);    diamond(g, 0, -h-par+2, bw*0.82, bh*0.82); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.14)'; g.lineWidth = 1;
+    diamond(g, 0, -h-par+2, bw*0.55, bh*0.55); g.stroke();   // Lichtkuppel
+    // Aufbau: beim Wohnblock ein Treppenhaus, beim Hochhaus ein Staffelgeschoss
+    const big = st === 'glass';
+    const boxH = big ? 15 : 11;
+    const bwx = bw*(big ? 0.56 : 0.30), bhx = bh*(big ? 0.56 : 0.30);
+    const cx = big ? 0 : -bw*0.14, cy = -h-par+2 + bh*(big ? 0.06 : 0.10);
+    g.fillStyle = shade(wallC,-12+dim);
+    poly(g,[[cx-bwx/2,cy],[cx,cy+bhx/2],[cx,cy+bhx/2-boxH],[cx-bwx/2,cy-boxH]]); g.fill();
+    g.fillStyle = shade(wallC,-46+dim);
+    poly(g,[[cx,cy+bhx/2],[cx+bwx/2,cy],[cx+bwx/2,cy-boxH],[cx,cy+bhx/2-boxH]]); g.fill();
+    if (big){                       // umlaufendes Fensterband am Staffelgeschoss
+      g.fillStyle = lit ? 'rgba(255,206,105,.9)' : shade(glass,-8+dim);
+      poly(g,[[cx-bwx/2,cy-boxH*0.72],[cx,cy+bhx/2-boxH*0.72],
+              [cx,cy+bhx/2-boxH*0.34],[cx-bwx/2,cy-boxH*0.34]]); g.fill();
+      g.fillStyle = lit ? 'rgba(255,206,105,.55)' : shade(glass,-34+dim);
+      poly(g,[[cx,cy+bhx/2-boxH*0.72],[cx+bwx/2,cy-boxH*0.72],
+              [cx+bwx/2,cy-boxH*0.34],[cx,cy+bhx/2-boxH*0.34]]); g.fill();
+    }
+    g.fillStyle = shade(wallC,6+dim); diamond(g,cx,cy-boxH,bwx,bhx); g.fill();
+
+    // Mast mit Positionslicht
+    g.strokeStyle = shade(trimC,20+dim); g.lineWidth = 1.4;
+    const ax2 = big ? bw*0.10 : bw*0.24, ay2 = cy - boxH;
+    const mast = big ? 21 : 20;
+    g.beginPath(); g.moveTo(ax2,ay2); g.lineTo(ax2,ay2-mast); g.stroke();
+    g.beginPath(); g.moveTo(ax2-4,ay2-mast*0.65); g.lineTo(ax2+4,ay2-mast*0.65); g.stroke();
+    g.fillStyle = lit ? '#F2B035' : shade('#8B9095',dim);
+    g.beginPath(); g.arc(ax2,ay2-mast-1,1.9,0,7); g.fill();
+    return;
+  }
+
+  // Satteldach: Traufe steht über, Giebelspitze sitzt auf der Wandflucht
+  const E = st === 'rustic' ? 1.22 : 1.10, drop = st === 'rustic' ? 5 : 3;
+  const ev = q => [q[0]*E, q[1]*E - h + drop];
+  const eL=ev(L), eB=ev(B), eR=ev(R), eT=ev(T);
+  const r1 = [(L[0]+T[0])/2*E, (L[1]+T[1])/2*E - h - rH];
+  const r2 = [(B[0]+R[0])/2*E, (B[1]+R[1])/2*E - h - rH];
+  const gp1 = [(L[0]+T[0])/2, (L[1]+T[1])/2 - h - rH];
+  const gp2 = [(B[0]+R[0])/2, (B[1]+R[1])/2 - h - rH];
+
+  g.fillStyle = shade(wallC, -52+dim); poly(g,[up(L),up(T),gp1]); g.fill();
+
+  const slope = (a,b,c,d,col,rows) => {
+    g.fillStyle = col; poly(g,[a,b,c,d]); g.fill();
+    if (st === 'rustic'){
+      g.strokeStyle = 'rgba(70,50,26,.16)'; g.lineWidth = 2.2;
+    } else {
+      g.strokeStyle = 'rgba(0,0,0,.20)'; g.lineWidth = 1;
+    }
+    for (let i=1;i<rows;i++){
+      const s1 = mid(b,a,i/rows), s2 = mid(c,d,i/rows);
+      g.beginPath(); g.moveTo(s1[0],s1[1]); g.lineTo(s2[0],s2[1]); g.stroke();
+    }
+  };
+  const rows = st === 'rustic' ? 4 : 7;
+  slope(r1, eT, eR, r2, shade(roofC,-30+dim), rows);
+  slope(r1, eL, eB, r2, shade(roofC, 16+dim), rows);
+
+  if (st === 'rustic'){          // dicke Reetkante und Firstrolle
+    g.strokeStyle = shade(roofC,-16+dim); g.lineWidth = 4;
+    g.beginPath(); g.moveTo(eL[0],eL[1]); g.lineTo(eB[0],eB[1]); g.stroke();
+    g.strokeStyle = shade(roofC,-34+dim); g.lineWidth = 3.5;
+    g.beginPath(); g.moveTo(r1[0],r1[1]); g.lineTo(r2[0],r2[1]); g.stroke();
+  }
+
+  // Gaube ab drei Geschossen
+  if (s.floors >= 3){
+    const bl = (u,v) => mid(mid(eL,eB,u), mid(r1,r2,u), v);
+    const c = bl(0.5,0.34), w = 9;
+    const p1=[c[0]-w,c[1]+3], p2=[c[0]+w,c[1]+6];
+    g.fillStyle = shade(wallC,-20+dim);
+    poly(g,[p1,p2,[p2[0],p2[1]-13],[p1[0],p1[1]-13]]); g.fill();
+    g.fillStyle = lit ? '#FFCE69' : shade(glass,-20+dim);
+    poly(g,[[p1[0]+3,p1[1]-3],[p2[0]-3,p2[1]-3],[p2[0]-3,p2[1]-10],[p1[0]+3,p1[1]-10]]); g.fill();
+    g.fillStyle = shade(roofC,14+dim);
+    poly(g,[[p1[0]-2,p1[1]-12],[p2[0]+2,p2[1]-12],[(p1[0]+p2[0])/2,(p1[1]+p2[1])/2-21]]); g.fill();
+  }
+
+  // Schornstein
+  const ch = mid(mid(eL,eB,0.34), mid(r1,r2,0.34), 0.50);
+  const cw = 5, chh = 14 + rH*0.30;
+  const chC = st === 'stone' ? '#9A8272' : '#8A6A5A';
+  g.fillStyle = shade(chC,-14+dim);
+  poly(g,[[ch[0]-cw,ch[1]],[ch[0],ch[1]+cw*0.5],[ch[0],ch[1]+cw*0.5-chh],[ch[0]-cw,ch[1]-chh]]); g.fill();
+  g.fillStyle = shade(chC,-46+dim);
+  poly(g,[[ch[0],ch[1]+cw*0.5],[ch[0]+cw,ch[1]],[ch[0]+cw,ch[1]-chh],[ch[0],ch[1]+cw*0.5-chh]]); g.fill();
+  g.fillStyle = shade(chC,-4+dim);
+  diamond(g, ch[0], ch[1]-chh, cw*2.4, cw*1.2); g.fill();
+  lastChimney = [ch[0], ch[1]-chh-2];
+
+  // Sichtbarer Giebel
+  g.fillStyle = shade(wallC,-30+dim); poly(g,[up(B),up(R),gp2]); g.fill();
+  const gc = [(up(B)[0]+up(R)[0]+gp2[0])/3, (up(B)[1]+up(R)[1]+gp2[1])/3];
+  if (st === 'timber' || st === 'rustic'){
+    g.fillStyle = shade(trimC,-16+dim);
+    const gb = (p,q,w) => { poly(g,[[p[0],p[1]-w],[q[0],q[1]-w],[q[0],q[1]+w],[p[0],p[1]+w]]); g.fill(); };
+    gb(up(B), gp2, 1.6); gb(up(R), gp2, 1.6); gb(up(B), up(R), 1.6);
+  }
+  g.fillStyle = lit ? 'rgba(255,206,105,.92)' : shade(glass,-34+dim);
+  diamond(g, gc[0], gc[1], 9, 9); g.fill();
+
+  g.strokeStyle = shade(roofC,-8+dim); g.lineWidth = st === 'rustic' ? 3.5 : 2.4;
+  g.beginPath(); g.moveTo(eB[0],eB[1]); g.lineTo(r2[0],r2[1]); g.lineTo(eR[0],eR[1]); g.stroke();
+
+  // Rathausuhr und Wimpel
+  if (s.clock){
+    g.fillStyle = '#E8E0CC'; diamond(g, gc[0], gc[1]-1, 15, 15); g.fill();
+    g.strokeStyle = '#3F5A6B'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(gc[0],gc[1]-1); g.lineTo(gc[0],gc[1]-6); g.stroke();
+    g.beginPath(); g.moveTo(gc[0],gc[1]-1); g.lineTo(gc[0]+4,gc[1]+1); g.stroke();
+    const top = [(r1[0]+r2[0])/2, (r1[1]+r2[1])/2];
+    g.strokeStyle = '#93A4AF'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(top[0],top[1]-20); g.stroke();
+    g.fillStyle = '#F2B035';
+    poly(g,[[top[0],top[1]-20],[top[0]+14,top[1]-16],[top[0],top[1]-11]]); g.fill();
+  }
+}
+
+/* Ein Baum ist kein Quader — Stamm und Krone entstehen aus Kurven und Kreisen.
+   Die Krone wird in drei Lagen gesetzt: Schatten unten rechts, Grundton,
+   Licht oben links. Das ergibt Volumen ohne Farbverlauf. */
+function paintTree(g, type, mode){
+  const t = TYPES[type], big = t.tree === 'big';
+  const dim = mode === 'cut' ? -40 : 0;
+  const bw = TW*0.55, bh = TH*0.55;
+  const leaf = big ? '#4F7C46' : '#5F8C4E';
+  const th = t.trunkH, tw = big ? 5 : 3.2;
+
+  g.fillStyle = 'rgba(0,0,0,.30)';
+  diamond(g, 4, 3, bw*(big?1.14:0.84), bh*(big?1.14:0.84)); g.fill();
+
+  // Beet
+  g.fillStyle = shade('#38472F', dim);
+  diamond(g, 0, 0, bw*(big?1.00:0.72), bh*(big?1.00:0.72)); g.fill();
+  g.fillStyle = shade('#46583A', dim);
+  diamond(g, 0, -1.5, bw*(big?0.88:0.62), bh*(big?0.88:0.62)); g.fill();
+
+  if (big){                       // Steinkranz um den alten Baum
+    g.fillStyle = shade('#7E8279', dim);
+    for (let i=0;i<10;i++){
+      const a = Math.PI*2*i/10;
+      g.beginPath();
+      g.ellipse(Math.cos(a)*bw*0.46, Math.sin(a)*bh*0.46 - 1.5, 3.2, 2, 0, 0, 7);
+      g.fill();
+    }
+  }
+
+  // Stamm mit leichter Wurzelverbreiterung
+  g.fillStyle = shade('#6E5238', dim);
+  g.beginPath();
+  g.moveTo(-tw*1.7, 1);
+  g.quadraticCurveTo(-tw*0.8, -th*0.55, -tw*0.5, -th);
+  g.lineTo(tw*0.5, -th);
+  g.quadraticCurveTo(tw*0.8, -th*0.55, tw*1.7, 1);
+  g.closePath(); g.fill();
+  g.fillStyle = 'rgba(0,0,0,.24)';
+  g.beginPath();
+  g.moveTo(0, 1); g.lineTo(0, -th); g.lineTo(tw*0.5, -th);
+  g.quadraticCurveTo(tw*0.8, -th*0.55, tw*1.7, 1);
+  g.closePath(); g.fill();
+
+  if (big){                       // zwei Äste in die Krone
+    g.strokeStyle = shade('#5E4630', dim); g.lineWidth = 3; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-1,-th*0.72); g.quadraticCurveTo(-9,-th*0.95,-13,-th-6); g.stroke();
+    g.beginPath(); g.moveTo( 1,-th*0.62); g.quadraticCurveTo( 9,-th*0.88, 12,-th-4); g.stroke();
+    g.lineCap = 'butt';
+  }
+
+  const blobs = big
+    ? [[0,-th-17,19],[-15,-th-8,13],[15,-th-9,12],[-7,-th-29,12],[9,-th-27,11]]
+    : [[0,-th-10,12],[-9,-th-3,8.5],[9,-th-4,8],[-2,-th-18,8]];
+
+  g.fillStyle = shade(leaf, -30+dim);           // Schattenlage
+  for (const [x,y,r] of blobs){ g.beginPath(); g.arc(x+r*0.24, y+r*0.26, r, 0, 7); g.fill(); }
+  g.fillStyle = shade(leaf, dim);               // Grundton
+  for (const [x,y,r] of blobs){ g.beginPath(); g.arc(x, y, r*0.94, 0, 7); g.fill(); }
+  g.fillStyle = shade(leaf, 26+dim);            // Lichtseite
+  for (const [x,y,r] of blobs){ g.beginPath(); g.arc(x-r*0.26, y-r*0.28, r*0.52, 0, 7); g.fill(); }
+  g.fillStyle = shade(leaf, 48+dim);            // Glanzlichter
+  for (const [x,y,r] of blobs){ g.beginPath(); g.arc(x-r*0.40, y-r*0.44, r*0.22, 0, 7); g.fill(); }
+}
+
+function paintAny(g, type, level, mode){
+  lastChimney = null;
+  const t = TYPES[type];
+  if (t.tree) paintTree(g, type, mode);
+  else if (type === 'well') paintWell(g, mode);
+  else paintHouse(g, type, level, mode);
+}
+
+function paintWell(g, mode){
+  const dim = mode === 'cut' ? -40 : 0;
+  g.fillStyle = 'rgba(0,0,0,.3)';
+  diamond(g, 4, 3, 40, 20); g.fill();
+
+  // Brunnenring
+  const rw = 34, rh = 17, wallH = 11;
+  g.fillStyle = shade('#8E958E',-40+dim);
+  g.beginPath();
+  g.ellipse(0,0,rw/2,rh/2,0,0,Math.PI); g.lineTo(-rw/2,-wallH);
+  g.ellipse(0,-wallH,rw/2,rh/2,0,Math.PI,0,true); g.closePath(); g.fill();
+  g.fillStyle = shade('#A8AFA9',4+dim);
+  g.beginPath(); g.ellipse(0,-wallH,rw/2,rh/2,0,0,7); g.fill();
+  g.fillStyle = '#1C2B2E';
+  g.beginPath(); g.ellipse(0,-wallH,rw/2-4,rh/2-2.5,0,0,7); g.fill();
+  g.fillStyle = 'rgba(120,170,180,.45)';
+  g.beginPath(); g.ellipse(0,-wallH+1,rw/2-7,rh/2-4,0,0,7); g.fill();
+  // Steinfugen
+  g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 1;
+  for (let i=0;i<7;i++){
+    const a = Math.PI*(i/6);
+    const x = Math.cos(a)*rw/2, y = Math.sin(a)*rh/2;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x,y-wallH); g.stroke();
+  }
+  // Pfosten, Querbalken, Kurbel
+  g.fillStyle = shade('#6B4E3C',-6+dim);
+  g.fillRect(-13,-wallH-26,3.5,26); g.fillRect(10,-wallH-26,3.5,26);
+  g.fillStyle = shade('#5A4030',6+dim); g.fillRect(-14,-wallH-27,28,4);
+  g.strokeStyle = '#C9C2B4'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(0,-wallH-23); g.lineTo(0,-wallH-11); g.stroke();
+  g.fillStyle = shade('#6B4E3C',12+dim);
+  g.fillRect(-4,-wallH-13,8,6);
+  // Dächlein
+  g.fillStyle = shade('#7C5540',10+dim);
+  poly(g,[[-19,-wallH-27],[0,-wallH-25],[0,-wallH-41],[-19,-wallH-38]]); g.fill();
+  g.fillStyle = shade('#7C5540',-26+dim);
+  poly(g,[[0,-wallH-25],[19,-wallH-27],[19,-wallH-38],[0,-wallH-41]]); g.fill();
+}
+
+/* ============================================================
+   7. BODEN UND STRASSEN
+============================================================ */
+function drawRoad(gx,gy,p){
+  const live = state.net.has(key(gx,gy));
+  const F = 0.52;
+  const T=[p.x,p.y-TH/2], R=[p.x+TW/2,p.y], B=[p.x,p.y+TH/2], L=[p.x-TW/2,p.y];
+  const Ti=[p.x,p.y-TH*F/2], Ri=[p.x+TW*F/2,p.y], Bi=[p.x,p.y+TH*F/2], Li=[p.x-TW*F/2,p.y];
+  ctx.fillStyle = live ? '#6E6555' : '#3C453D';
+  diamond(ctx,p.x,p.y,TW*F,TH*F); ctx.fill();
+  const links = [[[1,0],Ri,Bi,B,R],[[-1,0],Li,Ti,T,L],[[0,1],Bi,Li,L,B],[[0,-1],Ti,Ri,R,T]];
+  for (const [d,i1,i2,o2,o1] of links){
+    const n = at(gx+d[0],gy+d[1]);
+    if (!n || (n.type!=='road' && n.type!=='hall')) continue;
+    poly(ctx,[i1,i2,o2,o1]); ctx.fill();
+  }
+  if (live){  // Pflastersteine
+    ctx.fillStyle = 'rgba(0,0,0,.14)';
+    for (let i=0;i<5;i++){
+      const a = -0.3+i*0.16;
+      diamond(ctx, p.x+(a)*TW*0.5, p.y+(a)*TH*0.5, 9, 5); ctx.fill();
+      diamond(ctx, p.x-(a)*TW*0.5, p.y+(a)*TH*0.5, 9, 5); ctx.fill();
+    }
+  } else {
+    ctx.strokeStyle = 'rgba(196,106,92,.7)'; ctx.lineWidth = 1.2; ctx.setLineDash([3,3]);
+    diamond(ctx,p.x,p.y,TW*F,TH*F); ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+
+/* Sichtfenster in Weltkoordinaten. topPad gibt hohen Gebäuden Luft nach oben,
+   damit ein Turm am oberen Rand nicht verschwindet, bevor er ganz draußen ist. */
+function viewBox(topPad){
+  return {
+    x0: cam.x - (W/2)/cam.z - TW,      x1: cam.x + (W/2)/cam.z + TW,
+    y0: cam.y - (H/2)/cam.z - topPad,  y1: cam.y + (H/2)/cam.z + TH + DEPTH
+  };
+}
+const inBox = (p,v) => p.x >= v.x0 && p.x <= v.x1 && p.y >= v.y0 && p.y <= v.y1;
+
+function drawGround(){
+  {
+    const vis = viewBox(TH*2);
+    for (const [gx,gy] of state.cells){
+      const p = iso(gx,gy);
+      if (!inBox(p, vis)) continue;          // außerhalb des Bildschirms
+      const b = at(gx,gy);
+      ctx.fillStyle = '#1E312B';
+      poly(ctx,[[p.x-TW/2,p.y],[p.x,p.y+TH/2],[p.x,p.y+TH/2+DEPTH],[p.x-TW/2,p.y+DEPTH]]); ctx.fill();
+      ctx.fillStyle = '#182720';
+      poly(ctx,[[p.x,p.y+TH/2],[p.x+TW/2,p.y],[p.x+TW/2,p.y+DEPTH],[p.x,p.y+TH/2+DEPTH]]); ctx.fill();
+
+      const lit = (gx+gy)%2 === 0;
+      ctx.fillStyle = lit ? '#3D5C4E' : '#375547';
+      if (!b || !TYPES[b.type].aura){
+        // Je stärker die Nachbarschaft verstärkt, desto wärmer der Boden
+        let aura = 0;
+        for (const [dx,dy] of N4){
+          const nb = at(gx+dx,gy+dy);
+          if (nb && TYPES[nb.type].aura) aura += TYPES[nb.type].aura;
+        }
+        if (aura > 0){
+          const ramp = lit ? ['#47603F','#4F6A3C','#5C7539','#6A8036']
+                           : ['#415A3A','#496437','#556E34','#637931'];
+          ctx.fillStyle = ramp[Math.min(3, Math.floor(aura/0.6))];
+        }
+      }
+      diamond(ctx,p.x,p.y,TW,TH); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.045)'; ctx.lineWidth = 1; ctx.stroke();
+
+      // Grasbüschel auf freien Feldern
+      if (!b && (gx*7+gy*13)%4 === 0){
+        ctx.strokeStyle = 'rgba(150,185,150,.28)'; ctx.lineWidth = 1;
+        const ox = ((gx*29+gy*17)%9)-4, oy = ((gx*13+gy*31)%5)-2;
+        // derselbe Wind, nur an der Halmspitze — ein Sinus je Feld
+        const sw = wind ? Math.sin(windT + (gx+gy)*0.6) * 34 * wind : 0;
+        for (let i=-1;i<2;i++){
+          ctx.beginPath(); ctx.moveTo(p.x+ox+i*3, p.y+oy);
+          ctx.lineTo(p.x+ox+i*3+i+sw, p.y+oy-4-Math.abs(i)); ctx.stroke();
+        }
+      }
+      if (b && b.type === 'road') drawRoad(gx,gy,p);
+
+      // Feld, von dem das angehobene Gebäude stammt
+      if (state.moving && state.moving.x===gx && state.moving.y===gy){
+        const puls = reduceMotion ? 1 : 0.55 + 0.45*Math.sin(now()/320);
+        ctx.fillStyle = 'rgba(242,176,53,' + (0.10*puls) + ')';
+        diamond(ctx,p.x,p.y,TW,TH); ctx.fill();
+        ctx.strokeStyle = 'rgba(242,176,53,' + (0.5 + 0.4*puls) + ')';
+        ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+        diamond(ctx,p.x,p.y,TW*0.94,TH*0.94); ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      if (state.hover && state.hover.x===gx && state.hover.y===gy){
+        const need = TYPES[state.tool]?.stages[0].staff || 0;
+        const afford = state.tool==='raze' || state.tool==='lift' || state.tool==='harvest' ||
+                       state.tool==='move' ||
+                       (state.coins >= (TYPES[state.tool]?.cost ?? 0) && need <= freePop());
+        ctx.fillStyle = afford ? 'rgba(242,176,53,.16)' : 'rgba(196,106,92,.2)';
+        diamond(ctx,p.x,p.y,TW,TH); ctx.fill();
+        ctx.strokeStyle = afford ? 'rgba(242,176,53,.75)' : 'rgba(196,106,92,.8)';
+        ctx.lineWidth = 1.5; ctx.stroke();
+      }
+    }
+  }
+}
+
+/* ============================================================
+   8. GEBÄUDE PLATZIEREN
+============================================================ */
+function drawBuilding(b, ghost){
+  const s = stageOf(b), p = iso(b.x,b.y);
+  const cut = !ghost && !b.active;
+  const ready = !ghost && isReady(b);
+  const mode = ghost ? 'idle' : cut ? 'cut' : ready ? 'lit' : 'idle';
+  const tt = TYPES[b.type];
+  const sp = sprite(b.type, b.level, mode);
+
+  let k = 1;
+  if (!reduceMotion && !ghost){
+    const age = (now()-b.born)/430;
+    if (age < 1) k = 0.4 + 0.6*(1-Math.pow(1-age,3));
+  }
+
+  const lifted = !ghost && state.moving &&
+                 state.moving.x === b.x && state.moving.y === b.y;
+  ctx.save();
+  if (ghost) ctx.globalAlpha = 0.5;
+  else if (lifted) ctx.globalAlpha = 0.32;    // Vorlage bleibt blass stehen
+  if (ready && !reduceMotion){
+    const pulse = 0.5+0.5*Math.sin(now()/380);
+    ctx.shadowColor = 'rgba(242,176,53,'+(0.3+pulse*0.4)+')';
+    ctx.shadowBlur = 16+pulse*14;
+  }
+  ctx.translate(p.x, p.y);
+  if (k !== 1) ctx.scale(1,k);
+  if (wind && tt.tree) ctx.transform(1, 0, swayOf(tt, b.x*1.7 + b.y*0.9), 1, 0, 0);
+  ctx.drawImage(sp.cv, -sp.ax, -sp.ay, sp.w, sp.h);
+  ctx.restore();
+  if (ghost) return;
+
+  // Rauch aus dem Schornstein, solange produziert wird
+  if (!cut && !ready && s.time > 0 && sp.smoke && !reduceMotion)
+    puffSmoke(ctx, p.x + sp.smoke[0], p.y + sp.smoke[1], b.x*0.31 + b.y*0.17);
+
+  /* Brunnen: ein Tropfen fällt, danach laufen Ringe über den Wasserspiegel.
+     Alles aus einer Phase abgeleitet, damit kein Zustand mitgeführt werden muss. */
+  if (b.type === 'well' && !reduceMotion){
+    const t = (now()/2400 + b.x*0.37 + b.y*0.61) % 1;
+    const cx = p.x, cy = p.y - 10;
+    if (t < 0.30){                                   // Tropfen vom Eimer
+      const f = t/0.30;
+      ctx.fillStyle = 'rgba(158,206,214,.8)';
+      ctx.beginPath();
+      ctx.ellipse(cx, p.y - 23 + f*f*13, 1.3, 2.1 + f, 0, 0, 7);
+      ctx.fill();
+    }
+    for (let i=0;i<2;i++){                           // zwei versetzte Ringe
+      const f = (t + i*0.5) % 1;
+      if (f > 0.68) continue;
+      const q = f/0.68;
+      ctx.strokeStyle = 'rgba(168,214,224,' + ((1-q)*0.55).toFixed(3) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 1.4 + q*8.4, 0.6 + q*3.7, 0, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  const apexY = p.y - s.h - TH*0.31 - s.roofH - (b.type==='hall' ? 22 : 0);
+  if (cut){
+    const y = apexY-14, blink = reduceMotion ? 1 : 0.55+0.45*Math.sin(now()/300);
+    ctx.globalAlpha = blink;
+    if (!b.conn){                       // keine Straße: rotes Ausrufezeichen
+      ctx.fillStyle = '#C46A5C';
+      diamond(ctx,p.x,y,13,13); ctx.fill();
+      ctx.fillStyle = '#0E1B24';
+      ctx.fillRect(p.x-1,y-4,2,5); ctx.fillRect(p.x-1,y+2,2,2);
+    } else {                            // kein Personal: Figur im blauen Feld
+      ctx.fillStyle = '#6E93AE';
+      diamond(ctx,p.x,y,13,13); ctx.fill();
+      ctx.fillStyle = '#0E1B24';
+      ctx.beginPath(); ctx.arc(p.x,y-3,1.8,0,7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(p.x-2.6,y+4); ctx.lineTo(p.x-1.6,y-0.6);
+      ctx.lineTo(p.x+1.6,y-0.6); ctx.lineTo(p.x+2.6,y+4); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1; return;
+  }
+  if (s.time > 0 && !ready){
+    const w=30, y=apexY-12, x=p.x-w/2;
+    ctx.fillStyle = 'rgba(10,20,27,.75)'; ctx.fillRect(x,y,w,3);
+    ctx.fillStyle = 'rgba(242,176,53,.85)'; ctx.fillRect(x,y,w*progress(b),3);
+  }
+}
+
+/* Angrenzende Bauabschnitte als Kaufangebot einzeichnen */
+function drawOffers(){
+  const list = offers();
+  if (!list.length) return;
+  const price = plotPrice();
+  const ready = state.free === 0;
+  const can = ready && state.coins >= price;
+  const t = now();
+
+  const visO = viewBox(TH*3);
+  for (const o of list){
+    const mid0 = iso(o.sx*P + (P-1)/2, o.sy*P + (P-1)/2);
+    if (mid0.x < visO.x0-P*TW || mid0.x > visO.x1+P*TW ||
+        mid0.y < visO.y0-P*TH || mid0.y > visO.y1+P*TH) continue;
+    const c0 = iso(o.sx*P,       o.sy*P);
+    const c1 = iso(o.sx*P+P-1,   o.sy*P);
+    const c2 = iso(o.sx*P+P-1,   o.sy*P+P-1);
+    const c3 = iso(o.sx*P,       o.sy*P+P-1);
+    const pts = [[c0.x, c0.y-TH/2],[c1.x+TW/2, c1.y],[c2.x, c2.y+TH/2],[c3.x-TW/2, c3.y]];
+
+    ctx.fillStyle = can ? 'rgba(242,176,53,.09)' : 'rgba(140,160,168,.05)';
+    poly(ctx, pts); ctx.fill();
+    ctx.strokeStyle = can ? 'rgba(242,176,53,'+(0.55+0.35*Math.sin(t/420))+')'
+                          : 'rgba(140,160,168,.32)';
+    ctx.lineWidth = 1.6; ctx.setLineDash([7,5]);
+    poly(ctx, pts); ctx.stroke(); ctx.setLineDash([]);
+
+    const mx = (pts[0][0]+pts[2][0])/2, my = (pts[0][1]+pts[2][1])/2;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = can ? '#F2B035' : 'rgba(140,160,168,.7)';
+    ctx.font = '600 13px "IBM Plex Mono", monospace';
+    ctx.fillText(price.toLocaleString('de-DE'), mx, my - 2);
+    ctx.font = '500 9px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = 'rgba(140,160,168,.75)';
+    ctx.fillText(ready ? 'Bauabschnitt kaufen' : state.free + ' Felder noch frei', mx, my + 12);
+  }
+}
+
+/* Drei Wolken auf aufsteigender Bahn. Die Phase kommt von außen, damit nicht
+   alle Schornsteine im Gleichtakt qualmen. */
+function puffSmoke(g, x, y, phase){
+  for (let i=0;i<3;i++){
+    const t = ((now()/2100) + i/3 + phase) % 1;
+    g.globalAlpha = (1-t)*0.22;
+    g.fillStyle = '#C4CEC8';
+    g.beginPath();
+    g.arc(x + Math.sin(t*4 + phase*6)*5, y - t*26, 2.2 + t*5, 0, 7);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+}
+
+function drawEffects(){
+  const t = now();
+  state.puffs = state.puffs.filter(p => t-p.t < 620);
+  for (const p of state.puffs){
+    const k = (t-p.t)/620;
+    ctx.globalAlpha = (1-k)*0.4; ctx.fillStyle = '#9FB0A8';
+    ctx.beginPath(); ctx.arc(p.x, p.y-k*26, p.r*(1+k*1.6), 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  state.floats = state.floats.filter(f => t-f.t < 1150);
+  ctx.font = '600 16px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
+  for (const f of state.floats){
+    const k = (t-f.t)/1150;
+    ctx.globalAlpha = 1-k*k; ctx.fillStyle = '#F2B035';
+    ctx.shadowColor = 'rgba(242,176,53,.6)'; ctx.shadowBlur = 10;
+    ctx.fillText(f.text, f.x, f.y-k*40); ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* Scherung statt Drehung: der Versatz wächst mit dem Abstand zum Boden, also
+   stehen die Wurzeln still und die Krone wiegt sich. Zwei überlagerte
+   Schwingungen und ein Versatz je Feld verhindern Gleichtakt. Kosten: eine
+   Matrix vor dem ohnehin nötigen drawImage — kein Sprite, kein Zeichenaufruf. */
+function swayOf(t, phase){
+  return t.sway * (Math.sin(windT + phase) + 0.32*Math.sin(windT*2.46 + phase*1.7)) * wind * 34;
+}
+
+function frame(){
+  // Böen schwellen langsam an und ab; ein Sinus für die ganze Karte
+  windT = now()/1500;
+  wind = reduceMotion ? 0 : (0.62 + 0.38*Math.sin(now()/4300)) * 0.05;
+
+  ctx.save();
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  ctx.save();
+  const z = DPR*cam.z;
+  ctx.setTransform(z, 0, 0, z, DPR*(W/2 - cam.x*cam.z), DPR*(H/2 - cam.y*cam.z));
+  drawGround();
+  drawOffers();
+  const visB = viewBox(210);
+  const list = [];
+  for (const b of state.tiles.values()){
+    if (b.type === 'road') continue;
+    if (!inBox(iso(b.x,b.y), visB)) continue;
+    list.push(b);
+  }
+  list.sort((a,b)=>(a.x+a.y)-(b.x+b.y));
+  for (const b of list) drawBuilding(b,false);
+  if (state.hover && TYPES[state.tool] && !at(state.hover.x,state.hover.y) && state.tool!=='road'){
+    drawBuilding({x:state.hover.x,y:state.hover.y,type:state.tool,level:0,born:0,conn:true},true);
+  }
+  // Angehobenes Gebäude als Vorschau am Zielfeld
+  if (state.moving && state.hover && !at(state.hover.x,state.hover.y)){
+    const src = at(state.moving.x, state.moving.y);
+    if (src){
+      // leicht angehoben zeichnen, damit die Vorschau wie getragen wirkt
+      ctx.save(); ctx.translate(0, -5);
+      drawBuilding({ ...src, x:state.hover.x, y:state.hover.y, born:0 }, true);
+      ctx.restore();
+    }
+  }
+  drawEffects();
+  ctx.restore();
+
+  // Die Hilfeseite nutzt dieselbe Schleife — aber nur, solange sie offen ist
+  if (helpCards.length && !helpEl.hidden) paintHelpCards();
+
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   9. EINGABE
+============================================================ */
+const pointers = new Map();
+let gesture = null, holdTimer = null;
+const TAP_SLOP = 8;          // ab dieser Bewegung ist es kein Tippen mehr
+const HOLD_MS  = 380;        // so lange halten, um ein Gebäude aufzunehmen
+
+function cancelHold(){ clearTimeout(holdTimer); holdTimer = null; }
+
+/* Langdruck: aus dem Tippen wird ein Tragen. Das Gebäude hängt danach am
+   Zeiger, bis es losgelassen wird — unabhängig vom gewählten Werkzeug. */
+function startCarry(gs){
+  if (!gs || gs.mode !== 'tap' || !gs.holdAt) return;
+  const b = at(gs.holdAt.x, gs.holdAt.y);
+  if (!b || TYPES[b.type].fixed) return;
+  gs.mode = 'carry';
+  state.moving = { x:b.x, y:b.y };
+  state.hover  = { x:b.x, y:b.y };
+  try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12); } catch (e){}
+  flash(stageOf(b).name + ' aufgenommen \u2014 auf ein freies Feld ziehen.');
+}
+
+function localXY(ev){
+  const r = cv.getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+function toGrid(ev){
+  const l = localXY(ev);
+  const g = toTile(l.x, l.y);
+  if (!unlocked(g.x,g.y)) return null;
+  return g;
+}
+const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+/* ---- Tippen auswerten (Bauen, Kassieren, Ausbauen, Abreißen) ---- */
+function buyPlot(k){
+  const price = plotPrice();
+  if (state.free > 0)
+    return flash('Erst alles bebauen — noch ' + state.free + ' freie Felder.');
+  if (state.coins < price)
+    return flash('Bauabschnitt kostet ' + price.toLocaleString('de-DE') + ' Münzen.');
+  state.coins -= price;
+  state.plots.add(k);
+  rebuildWorld();
+  const [sx,sy] = k.split(',').map(Number);
+  for (let i=0;i<P;i++) puff(sx*P+i, sy*P+(i%2?0:P-1));
+  flash('Bauabschnitt gekauft — ' + (P*P) + ' neue Felder.');
+  refresh();
+}
+
+function tap(ev){
+  const l = localXY(ev);
+  const raw = toTile(l.x, l.y);
+  if (!unlocked(raw.x, raw.y)){
+    const k = plotKey(raw.x, raw.y);
+    if (offers().some(o => o.k === k)) buyPlot(k);
+    return;
+  }
+  const g = raw;
+  const b = at(g.x,g.y);
+
+  // Etwas in der Hand? Dann setzt jeder Tipp es ab, gleich welches Werkzeug.
+  // Sonst käme man aus dem Tragen nur noch über Escape wieder heraus.
+  if (state.moving){ moveTo(g.x, g.y); return; }
+
+  // Reines Ernten: sammelt nur ein und baut nie versehentlich etwas
+  if (state.tool==='harvest'){
+    if (!b) return flash('Leeres Feld — hier gibt es nichts zu ernten.');
+    if (isReady(b)) return collect(b);
+    if (!b.conn) return flash(stageOf(b).name + ' hat keinen Weg zum Rathaus.');
+    if (!b.staffed) return flash(stageOf(b).name + ' steht still: ' +
+      stageOf(b).staff + ' Einwohner nötig, ' + freePop() + ' frei.');
+    return flash(stageOf(b).time ? stageOf(b).name + ' produziert noch.'
+      : TYPES[b.type].aura
+        ? TYPES[b.type].label + ' verstärkt nur die Nachbarn — nichts zu ernten.'
+        : stageOf(b).name + ' wirft nichts ab.');
+  }
+
+  // Verschieben: anheben (das Absetzen erledigt der Zweig oben)
+  if (state.tool==='move'){
+    if (b) pickUp(b); else flash('Hier steht nichts zum Verschieben.');
+    return;
+  }
+
+  if (state.tool==='raze'){ b ? demolish(b) : flash('Hier steht nichts.'); return; }
+  if (state.tool==='lift'){ b ? upgrade(b) : flash('Erst bauen, dann ausbauen.'); return; }
+  if (b){
+    if (isReady(b)) collect(b);
+    else if (!b.conn) flash(stageOf(b).name + ' hat keinen Weg zum Rathaus.');
+    else if (!b.staffed) flash(stageOf(b).name + ' steht still: ' +
+      stageOf(b).staff + ' Einwohner nötig, ' + freePop() + ' frei.');
+    else if (stageOf(b).time===0) flash(TYPES[b.type].aura
+      ? TYPES[b.type].label + ': +' + Math.round(TYPES[b.type].aura*100) +
+        ' % Ertrag auf die vier Nachbarfelder.'
+      : 'Straße.');
+    else flash(stageOf(b).name + ' produziert noch.');
+    return;
+  }
+  build(g.x,g.y,state.tool);
+}
+
+/* ---- Zeiger: ein Finger baut oder schiebt, zwei Finger zoomen ---- */
+cv.addEventListener('pointerdown', ev => {
+  cv.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId, { x:ev.clientX, y:ev.clientY });
+  state.hover = toGrid(ev);
+
+  if (pointers.size === 2){
+    cancelHold();
+    const [a,b] = [...pointers.values()];
+    gesture = { mode:'pinch', d:dist(a,b), mx:(a.x+b.x)/2, my:(a.y+b.y)/2 };
+    return;
+  }
+  if (pointers.size > 2) return;
+
+  if (ev.button === 1 || ev.shiftKey){          // Mittlere Taste oder Umschalt schiebt
+    gesture = { mode:'pan', lx:ev.clientX, ly:ev.clientY };
+    return;
+  }
+  const g = toGrid(ev);
+  if (state.tool === 'road' && g && !at(g.x,g.y)){
+    gesture = { mode:'paint' };
+    build(g.x, g.y, 'road');
+    return;
+  }
+  gesture = { mode:'tap', sx:ev.clientX, sy:ev.clientY };
+
+  // Liegt hier ein bewegliches Gebäude, läuft die Haltezeit an
+  const held = g && at(g.x, g.y);
+  if (held && !TYPES[held.type].fixed && state.tool !== 'raze' && !state.moving){
+    gesture.holdAt = { x:g.x, y:g.y };
+    const gs = gesture;
+    holdTimer = setTimeout(() => startCarry(gs), HOLD_MS);
+  }
+});
+
+cv.addEventListener('pointermove', ev => {
+  const p = pointers.get(ev.pointerId);
+  if (p){ p.x = ev.clientX; p.y = ev.clientY; }
+  if (ev.pointerType === 'mouse' && (!gesture || gesture.mode === 'tap')) state.hover = toGrid(ev);
+  if (gesture && gesture.mode === 'carry') state.hover = toGrid(ev);   // auch mit dem Finger
+  if (!gesture) return;
+
+  if (gesture.mode === 'pinch'){
+    if (pointers.size < 2) return;
+    const [a,b] = [...pointers.values()];
+    const d = dist(a,b), mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+    cam.x -= (mx - gesture.mx)/cam.z;
+    cam.y -= (my - gesture.my)/cam.z;
+    const r = cv.getBoundingClientRect();
+    if (gesture.d > 0) zoomAt(mx - r.left, my - r.top, d/gesture.d);
+    gesture.d = d; gesture.mx = mx; gesture.my = my;
+    clampCam();
+    return;
+  }
+  if (gesture.mode === 'paint'){
+    const g = toGrid(ev);
+    if (g && !at(g.x,g.y)) build(g.x, g.y, 'road');
+    return;
+  }
+  if (gesture.mode === 'carry') return;
+  if (gesture.mode === 'tap'){
+    if (Math.hypot(ev.clientX-gesture.sx, ev.clientY-gesture.sy) < TAP_SLOP) return;
+    cancelHold();                                            // war doch nur ein Wischen
+    gesture = { mode:'pan', lx:gesture.sx, ly:gesture.sy };   // aus Tippen wird Schieben
+    state.hover = null;
+  }
+  if (gesture.mode === 'pan'){
+    cam.x -= (ev.clientX - gesture.lx)/cam.z;
+    cam.y -= (ev.clientY - gesture.ly)/cam.z;
+    gesture.lx = ev.clientX; gesture.ly = ev.clientY;
+    clampCam();
+  }
+});
+
+function endPointer(ev){
+  const had = gesture;
+  cancelHold();
+  pointers.delete(ev.pointerId);
+
+  if (had && had.mode === 'carry'){
+    const g = toGrid(ev);
+    if (g && state.moving && (g.x !== state.moving.x || g.y !== state.moving.y)) moveTo(g.x, g.y);
+    else flash('In der Hand \u2014 Zielfeld antippen, Escape legt ab.');
+    gesture = null;
+    if (ev.pointerType !== 'mouse') state.hover = null;
+    return;
+  }
+  if (had && had.mode === 'tap') tap(ev);
+  if (pointers.size === 0){ gesture = null; if (ev.pointerType !== 'mouse') state.hover = null; }
+  else if (had && had.mode === 'pinch' && pointers.size === 1){
+    const [a] = [...pointers.values()];
+    gesture = { mode:'pan', lx:a.x, ly:a.y };
+  }
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse' && !gesture) state.hover = null; });
+
+/* ---- Mausrad ---- */
+cv.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const l = localXY(ev);
+  const step = ev.deltaMode === 1 ? ev.deltaY*16 : ev.deltaY;
+  zoomAt(l.x, l.y, Math.max(0.8, Math.min(1.25, Math.exp(-step*0.0018))));
+}, { passive:false });
+
+/* ---- Tastatur ---- */
+addEventListener('keydown', ev => {
+  if (ev.target !== document.body) return;
+  const pan = 60/cam.z;
+  if (ev.key === '+' || ev.key === '=') zoomAt(W/2, H/2, 1.25);
+  else if (ev.key === '-' || ev.key === '_') zoomAt(W/2, H/2, 0.8);
+  else if (ev.key === '0') resetView();
+  else if (ev.key === '?' || ev.key === 'h') toggleHelp(helpEl.hidden);
+  else if (ev.key === 'Escape'){
+    if (!helpEl.hidden) toggleHelp(false);
+    else if (state.moving){ state.moving = null; flash('Verschieben abgebrochen.'); }
+    else return;
+  }
+  else if (ev.key === 'ArrowLeft')  cam.x -= pan;
+  else if (ev.key === 'ArrowRight') cam.x += pan;
+  else if (ev.key === 'ArrowUp')    cam.y -= pan;
+  else if (ev.key === 'ArrowDown')  cam.y += pan;
+  else return;
+  clampCam(); ev.preventDefault();
+});
+
+/* ============================================================
+   SPEICHERN
+   Die Datei läuft in ganz verschiedenen Umgebungen: als Artefakt,
+   lokal per Doppelklick, auf einem Webserver, in einem abgeschotteten
+   Rahmen. Deshalb wird kein Speicher vorausgesetzt, sondern der beste
+   verfügbare gesucht — und notfalls bleibt der Weg über eine Datei.
+============================================================ */
+const SAVE_KEY = 'iso-stadt-v1';
+
+const Store = {
+  mode: 'kein',
+  async init(){
+    try {
+      if (typeof window !== 'undefined' && window.storage &&
+          typeof window.storage.get === 'function'){ this.mode = 'artefakt'; return; }
+    } catch (e){}
+    try {
+      const t = '__probe__';
+      window.localStorage.setItem(t,'1'); window.localStorage.removeItem(t);
+      this.mode = 'browser';
+    } catch (e){ this.mode = 'kein'; }
+  },
+  async read(){
+    try {
+      if (this.mode === 'artefakt'){ const r = await window.storage.get(SAVE_KEY); return r ? r.value : null; }
+      if (this.mode === 'browser') return window.localStorage.getItem(SAVE_KEY);
+    } catch (e){}
+    return null;
+  },
+  async write(str){
+    try {
+      if (this.mode === 'artefakt'){ await window.storage.set(SAVE_KEY, str); return true; }
+      if (this.mode === 'browser'){ window.localStorage.setItem(SAVE_KEY, str); return true; }
+    } catch (e){}
+    return false;
+  },
+  async wipe(){
+    try {
+      if (this.mode === 'artefakt') await window.storage.delete(SAVE_KEY);
+      if (this.mode === 'browser') window.localStorage.removeItem(SAVE_KEY);
+    } catch (e){}
+  }
+};
+
+/* Der Spielstand als kurze Liste. Zeiten werden als Restdauer abgelegt,
+   nicht als Zeitpunkt — sonst wäre nach einer Woche Pause alles fertig
+   und der Spielstand hinge an der Systemuhr. */
+function serialize(){
+  const t = now();
+  return JSON.stringify({
+    v: 1,
+    c: state.coins,
+    p: [...state.plots],
+    t: [...state.tiles.values()].map(b => [
+      b.x, b.y, b.type, b.level,
+      Math.max(0, Math.round((b.paused != null ? b.paused : b.done - t))),
+      b.paused != null ? 1 : 0,
+      b.invested || 0
+    ])
+  });
+}
+
+function deserialize(str){
+  const d = JSON.parse(str);
+  if (!d || d.v !== 1 || !Array.isArray(d.t) || !Array.isArray(d.p))
+    throw new Error('Das ist kein Spielstand dieser Fassung.');
+
+  const t = now();
+  const plots = new Set(d.p.filter(k => /^-?\d+,-?\d+$/.test(k)));
+  if (!plots.size) throw new Error('Der Spielstand enthält keine Bauabschnitte.');
+
+  state.coins = Math.max(0, Number(d.c) || 0);
+  state.plots = plots;
+  state.moving = null;
+  state.tiles = new Map();
+  rebuildWorld();
+
+  d.t.forEach(([x, y, type, level, rest, isPaused, invested], i) => {
+    const T = TYPES[type];
+    if (!T || !T.stages[level] || !unlocked(x, y) || at(x, y)) return;   // Unbekanntes still übergehen
+    state.tiles.set(key(x, y), {
+      x, y, type, level,
+      conn: false, staffed: false, active: false,
+      paused: isPaused ? Math.max(0, rest) : null,
+      done: t + Math.max(0, rest),
+      invested: Math.max(0, invested) || T.cost,
+      born: t - 1e6 + i          // weit in der Vergangenheit, Reihenfolge bleibt erhalten
+    });
+  });
+
+  if (![...state.tiles.values()].some(b => b.type === 'hall')) placeHall();
+  refresh();
+}
+
+function placeHall(){
+  state.tiles.set(key(3,3), { x:3, y:3, type:'hall', level:0, conn:true, staffed:true,
+    active:true, paused:null, invested:0,
+    done: now() + TYPES.hall.stages[0].time*1000, born:0 });
+}
+
+let loading = false, saveTimer = null, savedAt = 0;
+
+function scheduleSave(){
+  if (loading || Store.mode === 'kein') return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 1200);
+}
+async function saveNow(){
+  if (loading || Store.mode === 'kein') return false;
+  const okSave = await Store.write(serialize());
+  if (okSave){ savedAt = now(); paintSaveState(); }
+  return okSave;
+}
+
+function newCity(){
+  state.coins = 220;
+  state.tiles = new Map();
+  state.plots = new Set(['0,0','1,0','0,1','1,1']);
+  state.floats = []; state.puffs = []; state.moving = null;
+  rebuildWorld();
+  placeHall();
+  refresh();
+  resetView();
+}
+
+async function bootSave(){
+  await Store.init();
+  loading = true;
+  let restored = false;
+  const raw = await Store.read();
+  // Nur laden, solange niemand schon gebaut hat — sonst würde ein Klick
+  // in den ersten Millisekunden vom alten Stand überschrieben.
+  const untouched = state.tiles.size === 1 && state.coins === 220;
+  if (raw && untouched){
+    try { deserialize(raw); resetView(); restored = true; }
+    catch (e){ console.warn('Spielstand unlesbar:', e.message); }
+  }
+  loading = false;
+  paintSaveState();
+  if (restored) flash('Stadt fortgesetzt.');
+}
+
+/* ---- Sichern und Laden über eine Datei: geht in jeder Umgebung ---- */
+function exportFile(){
+  const data = serialize();
+  try {
+    const url = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'iso-stadt-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    flash('Spielstand als Datei gesichert.');
+  } catch (e){
+    showText(data);
+    flash('Herunterladen nicht möglich — hier ist der Sicherungstext.');
+  }
+}
+
+function importFile(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json,.txt';
+  inp.addEventListener('change', () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => loadText(String(r.result));
+    r.readAsText(f);
+  });
+  inp.click();
+}
+
+function loadText(str){
+  try {
+    loading = true; deserialize(str.trim()); resetView(); loading = false;
+    saveNow(); flash('Stadt geladen.');
+  } catch (e){
+    loading = false;
+    flash('Konnte nicht geladen werden: ' + e.message);
+  }
+}
+
+/* ============================================================
+   HILFESEITE
+   Die Gebäudebilder entstehen aus denselben Zeichenfunktionen wie im Spiel,
+   damit die Übersicht nie von der Wirklichkeit abweicht.
+============================================================ */
+const helpEl = document.getElementById('help');
+
+/* Alle Karten einer Reihe teilen sich Maßstab und Standlinie — nur so ist
+   der Größenzuwachs von Stufe zu Stufe überhaupt ablesbar. */
+let cardSeq = 0;
+const helpCards = [];   // was auf der Hilfeseite bewegt werden muss
+
+/* Eine Karte wird aus demselben Sprite gezeichnet wie das Spielfeld und
+   bekommt dieselben Bewegungen: Wind, Pulsieren, Rauch. */
+function renderCard(e){
+  const { g, view, type, level, phase } = e;
+  const sp = sprite(type, level, 'lit');
+  const baseY = view.h - 44;
+
+  g.setTransform(e.dpr*view.scale, 0, 0, e.dpr*view.scale, 0, 0);
+  g.clearRect(0, 0, view.w, view.h);
+  g.strokeStyle = 'rgba(140,160,168,.22)'; g.lineWidth = 1/view.scale;
+  g.beginPath(); g.moveTo(8, baseY); g.lineTo(view.w-8, baseY); g.stroke();
+
+  g.save();
+  g.translate(view.w/2, baseY);
+  const t = TYPES[type];
+  if (wind && t.tree) g.transform(1, 0, swayOf(t, phase), 1, 0, 0);
+  if (!reduceMotion && t.stages[level].time > 0){
+    const pulse = 0.5 + 0.5*Math.sin(now()/380 + phase);
+    g.shadowColor = 'rgba(242,176,53,' + (0.22 + pulse*0.3) + ')';
+    g.shadowBlur = 10 + pulse*10;
+  }
+  g.drawImage(sp.cv, -sp.ax, -sp.ay, sp.w, sp.h);
+  g.restore();
+
+  if (sp.smoke && !reduceMotion)
+    puffSmoke(g, view.w/2 + sp.smoke[0], baseY + sp.smoke[1], phase);
+}
+
+function paintHelpCards(){
+  for (const e of helpCards) renderCard(e);
+}
+
+function stepCard(type, level, view, num){
+  const st = TYPES[type].stages[level];
+  const c = document.createElement('canvas');
+  const dpr = Math.min(2, DPR);
+  const cw = view.w*view.scale, chh = view.h*view.scale;
+  c.width = Math.round(cw*dpr); c.height = Math.round(chh*dpr);
+  c.style.width = Math.round(cw)+'px';
+  c.style.height = Math.round(chh)+'px';
+
+  const entry = { g:c.getContext('2d'), view, type, level, dpr,
+                  phase: helpCards.length * 0.9 };
+  helpCards.push(entry);
+  renderCard(entry);
+
+  const d = document.createElement('div');
+  d.className = 'step';
+  if (num){
+    const nn = document.createElement('div');
+    nn.className = 'num'; nn.textContent = 'Stufe ' + num;
+    d.appendChild(nn);
+  }
+  d.appendChild(c);
+  const lines = [];
+  if (st.time) lines.push('<em>'+st.yield.toLocaleString('de-DE')+'</em> / '+st.time+' s');
+  if (st.time) lines.push(Math.round(st.yield*60/st.time).toLocaleString('de-DE')+' pro Min.');
+  if (st.pop)  lines.push('<i>+'+st.pop+' Einwohner</i>');
+  if (st.staff) lines.push('<i>'+st.staff+' Einwohner nötig</i>');
+  if (TYPES[type].aura) lines.push('<i>+'+Math.round(TYPES[type].aura*100)+' % Nachbarn</i>');
+  if (level === 0 && TYPES[type].cost) lines.push('Bau: '+TYPES[type].cost.toLocaleString('de-DE'));
+  if (st.upgrade) lines.push('Ausbau: '+st.upgrade.toLocaleString('de-DE'));
+  const tag = document.createElement('div');
+  tag.innerHTML = '<div class="sn">'+st.name+'</div><div class="sd">'+lines.join('<br>')+'</div>';
+  d.appendChild(tag);
+  return d;
+}
+
+function chainOf(items, numbered){
+  const boxes = items.map(([t,l]) => spriteBox(t,l));
+  const view = {
+    w: Math.max(...boxes.map(b=>b.w)),
+    h: Math.max(...boxes.map(b=>b.h))
+  };
+  view.scale = Math.min(150/view.h, 108/view.w);
+  const row = document.createElement('div');
+  row.className = 'chain';
+  items.forEach(([t,l],i) => {
+    if (i && numbered){
+      const sep = document.createElement('div');
+      sep.className = 'sep'; sep.textContent = '\u203A';
+      row.appendChild(sep);
+    }
+    row.appendChild(stepCard(t, l, view, numbered ? i+1 : 0));
+  });
+  return row;
+}
+const chain = type => chainOf(TYPES[type].stages.map((_,i)=>[type,i]), true);
+
+let helpBuilt = false;
+function buildHelp(){
+  if (helpBuilt) return;
+  helpBuilt = true;
+  const body = document.getElementById('helpBody');
+  const add = html => { const d = document.createElement('div'); d.innerHTML = html; body.appendChild(d); };
+
+  add('<p>Baue eine Stadt vom Mittelalter bis in die Zukunft. Gebäude produzieren '+
+      'Münzen, aber nur wenn zwei Bedingungen erfüllt sind: ein durchgehender '+
+      '<b>Straßenweg zum Rathaus</b> und genügend <b>freie Einwohner</b>.</p>');
+
+  add('<h2>Wohngebäude</h2><p>Sechs Stufen. Jeder Ausbau bringt mehr Münzen und mehr '+
+      'Einwohner, verlängert aber den Takt. Der Ertrag pro Minute steigt trotzdem — '+
+      'nur wird das Abholen seltener nötig. Alle Bilder stehen im selben Maßstab '+
+      'auf einer Linie, der Zuwachs ist also maßstabsgetreu.</p>'+
+      '<p class="scrollNote">Stufe 1 bis 6 &#8212; seitlich wischen</p>');
+  body.appendChild(chain('hut'));
+
+  add('<h2>Werkstätten</h2><p>Verbrauchen Einwohner statt sie zu stellen. Ohne genug '+
+      'freie Leute lassen sie sich weder bauen noch ausbauen, und eine bestehende '+
+      'Werkstatt steht still, sobald der Wohnraum wegfällt.</p>'+
+      '<p class="scrollNote">Stufe 1 bis 3 &#8212; seitlich wischen</p>');
+  body.appendChild(chain('shop'));
+
+  add('<h2>Rathaus</h2><p>Steht fest in der Stadtmitte und ist der Ursprung des '+
+      'Straßennetzes. Es zieht <b>Steuern</b>: pro Einwohner in der Stadt kommen '+
+      '1,6 Münzen je Zyklus hinzu, es wächst also mit der Stadt.</p>');
+  body.appendChild(chainOf([['hall',0]], false));
+
+  add('<h2>Verstärker</h2><p>Brunnen und Bäume produzieren selbst nichts. Sie erhöhen '+
+      'den Ertrag der <b>vier angrenzenden Felder</b>, und mehrere Verstärker an '+
+      'demselben Gebäude <b>addieren sich</b>: drei große Bäume um eine Werkstatt '+
+      'vervierfachen deren Ausstoß.</p>'+
+      '<p>Das ist der eigentliche Hebel im Spiel, denn Verstärker brauchen weder '+
+      'Straße noch Einwohner. Ein verstärktes Fusionswerk liefert das Vierfache '+
+      'für dieselben 210 Einwohner — man spart also den ganzen Wohnraum, den vier '+
+      'einzelne Werke gekostet hätten. Der Boden färbt sich umso wärmer, je stärker '+
+      'ein Feld verstärkt wird.</p>');
+  body.appendChild(chainOf([['well',0],['tree1',0],['tree2',0]], false));
+
+  add('<h2>Straßen</h2><p>Kosten 10 Münzen. Ein Gebäude produziert, wenn eines seiner '+
+      'vier Nachbarfelder eine Straße ist, die lückenlos zum Rathaus führt. '+
+      'Abgeschnittene Stücke werden rot gestrichelt markiert und zählen nicht. '+
+      'Mit gedrücktem Zeiger lassen sich mehrere Felder am Stück pflastern.</p>');
+
+  add('<h2>Stillstand</h2>'+
+      '<p><span class="flag" style="background:#C46A5C"></span>'+
+      '<b>Rotes Ausrufezeichen</b> — kein Weg zum Rathaus.</p>'+
+      '<p><span class="flag" style="background:#6E93AE"></span>'+
+      '<b>Blaue Figur</b> — zu wenig freie Einwohner.</p>'+
+      '<p>In beiden Fällen wird die Restzeit <b>eingefroren</b>, nicht zurückgesetzt. '+
+      'Nach der Reparatur läuft die Produktion dort weiter, wo sie stehengeblieben ist.</p>');
+
+  add('<h2>Bauabschnitte</h2><p>Die Karte besteht aus Feldern zu 4 × 4. Du startest mit '+
+      'vier davon. Ist <b>jedes Feld bebaut</b>, leuchten die angrenzenden Abschnitte '+
+      'gestrichelt auf und lassen sich antippen. Der erste kostet 10.000 Münzen, jeder '+
+      'weitere 50 % mehr. Insgesamt sind 36 Abschnitte erreichbar.</p>');
+
+  add('<h2>Werkzeuge</h2>'+
+      '<div class="keys">'+
+      '<kbd>Ernten</kbd><span>Sammelt nur ein — baut und reißt nichts ab.</span>'+
+      '<kbd>Lang halten</kbd><span>Funktioniert mit jedem Werkzeug: ein Gebäude kurz '+
+      'gedrückt halten, dann auf ein freies Feld ziehen und loslassen.</span>'+
+      '<kbd>Verschieben</kbd><span>Gebäude antippen, dann ein freies Feld. Beides ist '+
+      'kostenlos; Stufe, Restzeit und Investition bleiben erhalten. Escape legt ab.</span>'+
+      '<kbd>Ausbauen</kbd><span>Hebt ein Gebäude auf die nächste Stufe.</span>'+
+      '<kbd>Abreißen</kbd><span>Erstattet die Hälfte aller Kosten inklusive Ausbauten.</span>'+
+      '</div>'+
+      '<p>Bei allen anderen Werkzeugen kassiert ein Tipp auf ein fertiges Gebäude '+
+      'ebenfalls den Ertrag.</p>');
+
+  add('<h2>Steuerung</h2>'+
+      '<div class="keys">'+
+      '<kbd>Mausrad</kbd><span>Zoomt auf den Punkt unter dem Zeiger.</span>'+
+      '<kbd>Ziehen</kbd><span>Verschiebt die Karte. Mit Straßenwerkzeug pflastert es stattdessen.</span>'+
+      '<kbd>Zwei Finger</kbd><span>Zoomen und verschieben zugleich.</span>'+
+      '<kbd>Umschalt + Ziehen</kbd><span>Verschiebt immer, auch beim Pflastern.</span>'+
+      '<kbd>+ &nbsp;&#8722; &nbsp;0</kbd><span>Näher, weiter, ganze Stadt.</span>'+
+      '<kbd>Pfeiltasten</kbd><span>Karte verschieben.</span>'+
+      '</div>');
+
+  add('<h2>Kopfzeile</h2>'+
+      '<div class="keys">'+
+      '<kbd>Einwohner frei</kbd><span>Verfügbar von insgesamt. Werkstätten binden sie.</span>'+
+      '<kbd>Ertrag/Min</kbd><span>Was alle laufenden Gebäude zusammen einbringen.</span>'+
+      '<kbd>Stillstand</kbd><span>Gebäude ohne Straße oder ohne Personal.</span>'+
+      '<kbd>Freie Felder</kbd><span>Muss null sein, um einen Bauabschnitt zu kaufen.</span>'+
+      '</div>');
+
+  const sec = document.createElement('div');
+  sec.innerHTML = '<h2>Speichern</h2>' +
+    '<p id="saveState" class="scrollNote"></p>' +
+    '<p>Die Stadt wird nach jeder Änderung automatisch gesichert, sobald der Browser ' +
+    'einen Speicher erlaubt. Unabhängig davon kannst du sie jederzeit als Datei ablegen — ' +
+    'die lässt sich auf jedem Gerät wieder einlesen.</p>' +
+    '<p>Gesichert werden Münzen, Bauabschnitte, alle Gebäude mit Stufe und Restzeit. ' +
+    'Restzeiten werden als <b>verbleibende Dauer</b> abgelegt, nicht als Zeitpunkt: ' +
+    'nach einer Pause läuft alles dort weiter, wo es aufgehört hat, statt auf einen ' +
+    'Schlag fertig zu sein.</p>';
+  body.appendChild(sec);
+
+  const row = document.createElement('div'); row.className = 'btnRow';
+  const box = document.createElement('textarea');
+  box.className = 'saveBox'; box.hidden = true; box.spellcheck = false;
+  box.setAttribute('aria-label','Sicherungstext');
+
+  const mkBtn = (label, fn, cls) => {
+    const b = document.createElement('button');
+    b.className = 'act' + (cls ? ' ' + cls : '');
+    b.textContent = label;
+    b.addEventListener('click', fn);
+    row.appendChild(b);
+  };
+  mkBtn('Als Datei sichern', exportFile);
+  mkBtn('Datei laden', importFile);
+  mkBtn('Text anzeigen', () => {
+    box.value = serialize(); box.hidden = false;
+    box.focus(); box.select();
+    flash('Text markieren und kopieren.');
+  });
+  mkBtn('Aus Text laden', () => {
+    if (box.hidden || !box.value.trim()){
+      box.hidden = false; box.value = ''; box.focus();
+      return flash('Sicherungstext hier einfügen, dann erneut drücken.');
+    }
+    loadText(box.value);
+  });
+  mkBtn('Neu anfangen', async () => {
+    if (!confirm('Die Stadt wird vollständig zurückgesetzt. Fortfahren?')) return;
+    await Store.wipe();
+    newCity();
+    flash('Neue Stadt angelegt.');
+  }, 'warn');
+  body.appendChild(row);
+  body.appendChild(box);
+  paintSaveState();
+}
+
+function paintSaveState(){
+  const el = document.getElementById('saveState');
+  if (!el || !el.tagName) return;
+  const wo = { artefakt:'im Artefaktspeicher', browser:'im Browserspeicher' }[Store.mode];
+  el.textContent = wo
+    ? 'Automatisch gesichert ' + wo +
+      (savedAt ? ' \u00B7 zuletzt ' + new Date(savedAt).toLocaleTimeString('de-DE') : '')
+    : 'Automatisches Speichern hier nicht möglich \u2014 bitte als Datei sichern.';
+}
+
+function toggleHelp(open){
+  if (open){ buildHelp(); helpEl.hidden = false; document.getElementById('helpClose').focus(); }
+  else { helpEl.hidden = true; }
+}
+document.getElementById('zhelp').addEventListener('click', () => toggleHelp(helpEl.hidden));
+document.getElementById('helpClose').addEventListener('click', () => toggleHelp(false));
+helpEl.addEventListener('click', e => { if (e.target === helpEl) toggleHelp(false); });
+
+document.getElementById('bSave').addEventListener('click', exportFile);
+document.getElementById('bLoad').addEventListener('click', importFile);
+
+document.getElementById('zin').addEventListener('click',  () => zoomAt(W/2, H/2, 1.3));
+document.getElementById('zout').addEventListener('click', () => zoomAt(W/2, H/2, 1/1.3));
+document.getElementById('zfit').addEventListener('click', () => { resetView(); flash('Ganze Stadt im Blick.'); });
+
+/* ============================================================
+   10. OBERFLÄCHE
+============================================================ */
+const tray = document.getElementById('tray'), tipEl = document.getElementById('tip');
+let tipTimer = null;
+const TOOLS = [
+  {id:'harvest', name:'Geld ernten', square:true},
+  ...['road','hut','shop','well','tree1','tree2'].map(k=>({id:k,name:TYPES[k].label,type:TYPES[k]})),
+  {id:'move',name:'Verschieben',util:true,hint:'ohne Verlust'},
+  {id:'lift',name:'Ausbauen',util:true,hint:'mehr, aber langsamer'},
+  {id:'raze',name:'Abreißen',util:true,hint:'50 % zurück'}
+];
+for (const tool of TOOLS){
+  const btn = document.createElement('button');
+  btn.className = 'card' + (tool.square ? ' sq' : tool.util ? ' util' : '');
+  btn.dataset.id = tool.id;
+  btn.setAttribute('aria-pressed', String(state.tool===tool.id));
+  if (tool.square){
+    btn.title = tool.name;
+    btn.setAttribute('aria-label', tool.name);
+    btn.innerHTML = '<span class="g"></span><span class="n">Ernten</span>';
+  } else if (tool.util){
+    btn.innerHTML = '<span class="n">'+tool.name+'</span><span class="m">'+tool.hint+'</span>';
+  } else {
+    const s = tool.type.stages[0];
+    const line = tool.type.isRoad ? 'verbindet zum Rathaus'
+      : tool.type.aura ? '+'+Math.round(tool.type.aura*100)+'% Nachbarn'
+      : s.yield+' / '+s.time+' s';
+    const extra = s.staff ? '<br>'+s.staff+' Einwohner'
+                : s.pop   ? '<br>+'+s.pop+' Einwohner' : '';
+    btn.innerHTML = '<span class="n">'+tool.name+'</span>'+
+      '<span class="m"><em>'+tool.type.cost+'</em> Münzen<br>'+line+extra+'</span>';
+  }
+  btn.addEventListener('click', () => {
+    state.tool = tool.id;
+    state.moving = null;              // Werkzeugwechsel legt das Gebäude wieder ab
+    for (const el of tray.children) el.setAttribute('aria-pressed', String(el.dataset.id===tool.id));
+    flash(tool.id==='move' ? 'Verschieben: Gebäude antippen, dann ein freies Feld.'
+      : tool.id==='harvest' ? 'Ernten: nur fertige Gebäude einsammeln, nichts wird gebaut.'
+      : tool.id==='road' ? 'Straße: ziehen, um mehrere Felder zu pflastern.'
+      : tool.util ? tool.name+': Gebäude antippen.' : tool.name+' gewählt — freies Feld antippen.');
+  });
+  tray.appendChild(btn);
+}
+function flash(msg){
+  tipEl.textContent = msg; tipEl.style.opacity = '1';
+  clearTimeout(tipTimer); tipTimer = setTimeout(()=>{tipEl.style.opacity='.45';},2600);
+}
+function refresh(){
+  state.net = computeNetwork();
+  const list = [...state.tiles.values()].filter(b => b.type !== 'road');
+
+  // 1. Straßenanschluss prüfen und den verfügbaren Wohnraum zählen
+  let total = 0;
+  for (const b of list){
+    b.conn = isConnected(b);
+    if (b.conn) total += stageOf(b).pop || 0;
+  }
+
+  // 2. Werkstätten der Reihe nach besetzen — die ältesten behalten ihre Leute
+  let used = 0;
+  for (const b of [...list].sort((x,y) => x.born - y.born)){
+    const need = stageOf(b).staff || 0;
+    if (!need){ b.staffed = true; continue; }
+    b.staffed = b.conn && used + need <= total;
+    if (b.staffed) used += need;
+  }
+  state.pop = { total, used };
+
+  // 3. Produktion anhalten oder dort fortsetzen, wo sie stehengeblieben ist
+  let perMin = 0, idle = 0;
+  for (const b of list){
+    const was = b.active, active = b.conn && b.staffed;
+    if (was && !active) b.paused = Math.max(0, b.done - now());
+    else if (!was && active && b.paused != null){ b.done = now() + b.paused; b.paused = null; }
+    b.active = active;
+    const st = stageOf(b);
+    if (st.time > 0){ if (active) perMin += payout(b)*(60/st.time); else idle++; }
+  }
+
+  state.free = state.cells.length - state.tiles.size;
+
+  const set = (id,val,warn) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.classList.toggle('warn', !!warn);
+  };
+  set('coins', state.coins.toLocaleString('de-DE'));
+  set('pop', (total-used) + ' / ' + total, total-used < 0);
+  set('rate', Math.round(perMin).toLocaleString('de-DE'));
+  set('cut', idle, idle > 0);
+  set('free', state.free, state.free === 0);
+
+  for (const el of tray.children){
+    const t = TYPES[el.dataset.id];
+    el.classList.toggle('broke', !!t &&
+      (state.coins < t.cost || (t.stages[0].staff||0) > total-used));
+  }
+  scheduleSave();
+}
+
+rebuildWorld();
+placeHall();
+resize(); resetView(); started = true; refresh();
+requestAnimationFrame(frame);
+
+// Beim Verlassen sofort sichern, nicht erst nach der Wartezeit
+addEventListener('pagehide', () => { clearTimeout(saveTimer); saveNow(); });
+addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden'){ clearTimeout(saveTimer); saveNow(); }
+});
+
+bootSave();
+</script>
+</body>
+</html>
