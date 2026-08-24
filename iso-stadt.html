@@ -330,6 +330,11 @@ for (let ci=0; ci<3; ci++){
                 off:Math.random()*4000, blobs });
 }
 
+/* ---- Tag und Nacht ---- */
+const DAY_CYCLE = 150000;          // ein voller Tag in Millisekunden
+let dayOffset = 0.32;              // Spielstart am Vormittag
+let dayF = 1, dayS = 1, nightF = 0;
+
 /* ============================================================
    2. STRASSENNETZ
 ============================================================ */
@@ -507,8 +512,7 @@ function resize(){
   if (ss !== SS){ SS = ss; cache.clear(); }
   W = innerWidth; H = innerHeight;
   cv.width = W*DPR; cv.height = H*DPR;
-  sky = ctx.createRadialGradient(W/2, H*0.42, 40, W/2, H*0.42, Math.max(W,H)*0.78);
-  sky.addColorStop(0,'#15252F'); sky.addColorStop(1,'#0A141B');
+  sky = null;                                      // Himmel kommt jetzt aus paintSky()
   buildSky();
   if (!started) resetView(); else clampCam();
 }
@@ -532,19 +536,66 @@ function buildSky(){
     }
     return g;
   }
-  const g1 = layer(90);
-  const mx = W*.76, my = H*.235, mr = 11;
-  const halo = g1.createRadialGradient(mx,my,mr*.4, mx,my,mr*5);
-  halo.addColorStop(0,'rgba(222,232,236,.20)');
-  halo.addColorStop(1,'rgba(222,232,236,0)');
-  g1.globalAlpha = 1; g1.fillStyle = halo;
-  g1.beginPath(); g1.arc(mx,my,mr*5,0,7); g1.fill();
-  g1.fillStyle = '#D6E0E4';
-  g1.beginPath(); g1.arc(mx,my,mr,0,7); g1.fill();
-  g1.fillStyle = 'rgba(13,23,31,.78)';
-  g1.beginPath(); g1.arc(mx-mr*.45,my-mr*.2,mr*.95,0,7); g1.fill();
-  starA = g1.canvas;
+  /* Nur Sterne — Sonne und Mond laufen dynamisch über den Himmel */
+  starA = layer(90).canvas;
   starB = layer(55).canvas;
+}
+
+/* Mischfarbe zwischen zwei Hex-Tönen */
+function mixHex(a,b,t){
+  const pa = parseInt(a.slice(1),16), pb = parseInt(b.slice(1),16);
+  const ch = s => Math.round(((pa>>s)&255) + (((pb>>s)&255)-((pa>>s)&255))*t);
+  return 'rgb('+ch(16)+','+ch(8)+','+ch(0)+')';
+}
+
+/* Himmelsverlauf je Tageszeit: nachts tiefblau, mittags helles Graublau */
+function paintSky(){
+  const gr = ctx.createRadialGradient(W/2,H*0.42,40, W/2,H*0.42, Math.max(W,H)*0.78);
+  gr.addColorStop(0, mixHex('#15252F','#79ACC0',dayS));
+  gr.addColorStop(1, mixHex('#0A141B','#CFE0D6',dayS));
+  return gr;
+}
+
+/* Sonne und Mond wandern auf einer Bogenbahn über das Bild; die Stellung
+   folgt direkt der Tageszeit, am Horizont blenden beide sanft ein. */
+function drawCelestial(dayRaw){
+  const arcPos = p => ({ x:-90+(W+180)*p,
+    y:H*0.50 - Math.sin(Math.min(1,Math.max(0,p))*Math.PI)*H*0.36 });
+  const vis = e => Math.max(0, Math.min(1, e*4));
+
+  // Sonne: über dem Horizont von 6 bis 18 Uhr
+  const sp = (dayRaw-0.25)/0.5;
+  if (sp > 0 && sp < 1){
+    const c = arcPos(sp), a = vis(Math.min(sp,1-sp)), hr = H*0.10;
+    const halo = ctx.createRadialGradient(c.x,c.y,6, c.x,c.y,hr);
+    halo.addColorStop(0,'rgba(255,226,160,'+(.5*a).toFixed(3)+')');
+    halo.addColorStop(1,'rgba(255,226,160,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(c.x,c.y,hr,0,7); ctx.fill();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#FFEFC4';
+    ctx.beginPath(); ctx.arc(c.x,c.y,13,0,7); ctx.fill();
+    ctx.fillStyle = '#FFF7DF';
+    ctx.beginPath(); ctx.arc(c.x-3,c.y-3,8,0,7); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Mond: die halbe Schicht versetzt zur Sonne
+  const mp = (((dayRaw+0.5)%1)-0.25)/0.5;
+  if (mp > 0 && mp < 1 && nightF > 0.02){
+    const c = arcPos(mp), a = vis(Math.min(mp,1-mp))*nightF, mr = 11;
+    const halo = ctx.createRadialGradient(c.x,c.y,mr*.4, c.x,c.y,mr*5);
+    halo.addColorStop(0,'rgba(222,232,236,'+(.20*a).toFixed(3)+')');
+    halo.addColorStop(1,'rgba(222,232,236,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(c.x,c.y,mr*5,0,7); ctx.fill();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#D6E0E4';
+    ctx.beginPath(); ctx.arc(c.x,c.y,mr,0,7); ctx.fill();
+    ctx.fillStyle = 'rgba(11,19,27,.78)';
+    ctx.beginPath(); ctx.arc(c.x-mr*.45,c.y-mr*.2,mr*.95,0,7); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 }
 
 /* ============================================================
@@ -774,23 +825,118 @@ function paintHouse(g, type, level, mode){
 
   /* ==================== FASSADEN NACH EPOCHE ==================== */
   if (st === 'rustic'){
-    // Senkrechte Bretter, ein Eckpfosten, kleine Luke statt Fenster
+    /* Die Hütte bekommt das volle Handwerk: Bohlen mit Rhythmus, schräge
+       Streben, Steinplinth, Tür mit Beschlägen, Fenster mit Läden und
+       Blumenkasten, dazu Holzstoß, Fass und Laterne — alles landet im
+       Sprite und kostet zur Laufzeit nichts. */
     for (const [face,d] of faces){
       g.fillStyle = 'rgba(60,44,28,.22)';
       for (let i=1;i<8;i++) band(face,i/8-0.008,sock,i/8+0.008,1);
+      g.fillStyle = 'rgba(255,240,210,.045)';        // jedes zweite Brett heller
+      for (let i=0;i<4;i++) band(face,(i*2)/8+0.012,sock,(i*2+1)/8-0.012,0.92);
       g.fillStyle = shade(trimC, d+dim);
       band(face,0,0.95,1,1);
       band(face,0.0,sock,0.05,1); band(face,0.95,sock,1,1);
+      // schräge Strebe von der Schwelle hoch zur Traufe
+      const s0 = face(0.06,sock+0.05), s1 = face(0.38,0.96);
+      const sdx = s1[0]-s0[0], sdy = s1[1]-s0[1], sl = Math.hypot(sdx,sdy);
+      const snx = -sdy/sl*1.2, sny = sdx/sl*1.2;
+      g.fillStyle = shade(trimC, d-8+dim);
+      poly(g,[[s0[0]+snx,s0[1]+sny],[s1[0]+snx,s1[1]+sny],
+              [s1[0]-snx,s1[1]-sny],[s0[0]-snx,s0[1]-sny]]); g.fill();
+      // Steinplinth: einzelne Quader statt glatter Sockelfläche
+      for (let i=0;i<6;i++){
+        const su = 0.055+0.155*i;
+        g.fillStyle = shade(i%2 ? '#87826F' : '#726C59', d/2+(i%3)*5+dim);
+        band(face,su,0,su+0.125,sock*0.92);
+      }
     }
+
+    /* ---- Tür mit Beschlägen, Klinke und Steinschwelle ---- */
     g.fillStyle = shade('#6B4A33',-4+dim); band(faceL,0.26,sock,0.46,sock+0.48);
-    g.fillStyle = shade(trimC,-8+dim);
+    g.fillStyle = 'rgba(35,24,14,.45)';
+    for (const du of [0.312,0.362,0.412]) band(faceL,du-0.004,sock+0.03,du+0.004,sock+0.45);
+    for (const hv of [0.10,0.36]){
+      g.fillStyle = shade('#3E2E1C',8+dim);
+      band(faceL,0.276,sock+hv,0.351,sock+hv+0.045);
+    }
+    g.fillStyle = '#D8B25A';
+    const kh = faceL(0.432,sock+0.24);
+    g.beginPath(); g.arc(kh[0],kh[1],0.9,0,7); g.fill();
+    g.fillStyle = shade('#8F8878',2+dim);            // Steinschwelle
+    band(faceL,0.243,sock-0.05,0.478,sock);
+    g.fillStyle = shade(trimC,-8+dim);               // Türsturz
     band(faceL,0.24,sock+0.46,0.48,sock+0.52);
+
+    /* ---- Fenster mit Läden und Blumenkasten ---- */
+    const wa0=0.64, wa1=0.80, wv0=0.52, wv1=0.74;
+    g.fillStyle = shade('#5E7060',-6+dim);
+    band(faceL,wa0-0.075,wv0-0.01,wa0-0.008,wv1+0.01);
+    band(faceL,wa1+0.008,wv0-0.01,wa1+0.075,wv1+0.01);
+    g.fillStyle = shade('#5E7060',7+dim);            // obere Ladenschiene
+    band(faceL,wa0-0.075,wv0-0.01,wa1+0.075,wv0+0.045);
     g.fillStyle = lit ? '#FFCE69' : shade(glass,-14+dim);
-    band(faceL,0.66,0.52,0.82,0.74);
+    band(faceL,wa0,wv0,wa1,wv1);
     g.fillStyle = shade(trimC,-2+dim);
-    band(faceL,0.735,0.52,0.755,0.74); band(faceL,0.66,0.62,0.82,0.635);
+    band(faceL,(wa0+wa1)/2-0.012,wv0,(wa0+wa1)/2+0.012,wv1);
+    band(faceL,wa0,wv0+(wv1-wv0)*0.52,wa1,wv0+(wv1-wv0)*0.60);
+    g.fillStyle = shade('#9C5A3C',-2+dim);           // Blumenkasten
+    band(faceL,wa0-0.04,wv1+0.02,wa1+0.04,wv1+0.12);
+    g.fillStyle = shade('#5F8F62',4+dim);
+    band(faceL,wa0-0.025,wv1+0.035,wa1+0.025,wv1+0.065);
+    for (const [fu,fcc] of [[wa0+0.01,'#C46A5C'],[(wa0+wa1)/2+0.01,'#D8A94E'],[wa1-0.005,'#C46A5C']]){
+      const fp = faceL(fu,wv1+0.085);
+      g.fillStyle = shade(fcc,10+dim);
+      g.beginPath(); g.arc(fp[0],fp[1],0.95,0,7); g.fill();
+    }
     g.fillStyle = lit ? 'rgba(255,206,105,.75)' : shade(glass,-34+dim);
     band(faceR,0.55,0.52,0.70,0.72);
+    g.fillStyle = shade('#5E7060',-28+dim);          // enge Läden rechts
+    band(faceR,0.495,0.51,0.545,0.73);
+    band(faceR,0.705,0.51,0.755,0.73);
+
+    /* ---- Laterne neben der Tür (nur bei Beleuchtung) ---- */
+    if (lit){
+      const lp = faceL(0.515,sock+0.28);
+      g.strokeStyle = shade('#20282C',dim); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(lp[0],lp[1]+6); g.lineTo(lp[0],lp[1]+1.5); g.stroke();
+      const lglow = g.createRadialGradient(lp[0],lp[1]+3.4,.4,lp[0],lp[1]+3.4,7);
+      lglow.addColorStop(0,'rgba(255,214,130,.8)');
+      lglow.addColorStop(1,'rgba(255,214,130,0)');
+      g.fillStyle = lglow;
+      g.beginPath(); g.arc(lp[0],lp[1]+3.4,7,0,7); g.fill();
+      g.fillStyle = '#FFD98F';
+      diamond(g,lp[0],lp[1]+3.4,3,4); g.fill();
+    }
+
+    /* ---- Holzstoß an der Westwand, Fass an der Ostseite ---- */
+    const fx2 = -bw*0.60, fy2 = bh*0.10;
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.beginPath(); g.ellipse(fx2, fy2+2.2, 10.5, 3.2, 0, 0, 7); g.fill();
+    const logRow = (cy3,cnt) => {
+      for (let li=0; li<cnt; li++){
+        const lx2 = fx2+(li-(cnt-1)/2)*5.1;
+        g.fillStyle = shade('#8A6A4E',dim);
+        g.beginPath(); g.arc(lx2,cy3,2.4,0,7); g.fill();
+        g.fillStyle = shade('#B08A62',6+dim);
+        g.beginPath(); g.arc(lx2,cy3,1.5,0,7); g.fill();
+        g.fillStyle = shade('#6E4E34',-4+dim);
+        g.beginPath(); g.arc(lx2-0.35,cy3-0.3,0.5,0,7); g.fill();
+      }
+    };
+    logRow(fy2,4); logRow(fy2-3.9,3); logRow(fy2-7.4,2);
+    const bx4 = bw*0.58, by4 = bh*0.06;
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.beginPath(); g.ellipse(bx4,by4+5.8,5.6,1.9,0,0,7); g.fill();
+    g.fillStyle = shade('#7A5638',-8+dim);
+    poly(g,[[bx4-4.4,by4-6],[bx4+4.4,by4-6],[bx4+3.6,by4+5.4],[bx4-3.6,by4+5.4]]); g.fill();
+    g.fillStyle = shade('#7A5638',10+dim);
+    poly(g,[[bx4-4.4,by4-6],[bx4-1.4,by4-6],[bx4-1.1,by4+5.4],[bx4-3.6,by4+5.4]]); g.fill();
+    g.fillStyle = shade('#4E3B2D',6+dim);
+    g.fillRect(bx4-4.2,by4-3.2,8.4,1.3);
+    g.fillRect(bx4-3.9,by4+2.7,7.8,1.3);
+    g.fillStyle = shade('#8F6A46',16+dim);
+    g.beginPath(); g.ellipse(bx4,by4-6,4.4,1.7,0,0,7); g.fill();
   }
 
   if (st === 'timber'){
@@ -1396,15 +1542,15 @@ function drawRoad(gx,gy,p){
     // Laterne an Kreuzungen und Endpunkten
     if (deg >= 2 && (gx*31+gy*17)%4 === 0){
       const lx = p.x-TW*.30, ly = p.y-TH*.03;
-      ctx.fillStyle = 'rgba(242,176,53,.08)';
+      ctx.fillStyle = 'rgba(242,176,53,'+(0.02+0.06*nightF).toFixed(3)+')';
       ctx.beginPath(); ctx.ellipse(lx+4, ly+1, 14, 6.5, 0, 0, 7); ctx.fill();
       ctx.strokeStyle = '#2A3338'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx,ly-15); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(lx,ly-15); ctx.lineTo(lx+4.4,ly-16.4); ctx.stroke();
       ctx.lineCap = 'butt';
-      ctx.fillStyle = 'rgba(255,206,110,.22)';
+      ctx.fillStyle = 'rgba(255,206,110,'+(0.04+0.18*nightF).toFixed(3)+')';
       ctx.beginPath(); ctx.arc(lx+5, ly-15.4, 4.8, 0, 7); ctx.fill();
-      ctx.fillStyle = '#FFD98F';
+      ctx.fillStyle = 'rgba(255,217,143,'+(0.35+0.65*nightF).toFixed(3)+')';
       ctx.beginPath(); ctx.arc(lx+5, ly-15.4, 1.7, 0, 7); ctx.fill();
     }
 
@@ -1580,15 +1726,15 @@ function drawBuilding(b, ghost){
     }
   }
 
-  /* Glühwürmchen um Baumkronen — nur zwei Punkte je Baum, keine Partikel */
-  if (tt.tree && !reduceMotion){
+  /* Glühwürmchen um Baumkronen — nur nachts, nur zwei Punkte je Baum */
+  if (tt.tree && !reduceMotion && nightF > 0.05){
     const big2 = tt.tree === 'big', n2 = big2 ? 2 : 1;
     const cyc = p.y - tt.trunkH - (big2 ? 17 : 9);
     for (let i=0;i<n2;i++){
       const ph = now()/1000*.5 + i*2.7 + b.x*.83 + b.y*1.31;
       const rr = 9 + 5*Math.sin(ph*.8 + i*2.1);
-      const al = .2 + .2*Math.sin(ph*4.3 + i);
-      if (al <= .02) continue;
+      const al = (.2 + .2*Math.sin(ph*4.3 + i))*nightF;
+      if (al <= .03) continue;
       ctx.fillStyle = 'rgba(255,213,128,'+al.toFixed(3)+')';
       ctx.beginPath();
       ctx.arc(p.x+Math.cos(ph*1.25)*rr, cyc+Math.sin(ph*1.6)*rr*.38, 1.25, 0, 7);
@@ -1849,21 +1995,31 @@ function frame(){
   windT = tNow/1500;
   wind = reduceMotion ? 0 : (0.62 + 0.38*Math.sin(tNow/4300)) * 0.05;
 
+  /* Tageszeit: dayS ist geglättet 1 mittags und 0 mitternachts, nightF das
+     Gegenstück. Bei reduzierter Bewegung bleibt es Nachmittagslicht. */
+  const dayRaw = reduceMotion ? 0.55 : ((tNow/DAY_CYCLE)+dayOffset)%1;
+  dayF = 0.5-0.5*Math.cos(dayRaw*Math.PI*2);
+  dayS = dayF*dayF*(3-2*dayF);
+  nightF = 1-dayS;
+
   ctx.save();
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  sky = paintSky();
   ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
 
-  // Sterne in zwei Ebenen, gegeneinander pulsierend — zwei Kopien genügen
-  if (starA){
-    ctx.globalAlpha = reduceMotion ? .8 : .68+.32*Math.sin(tNow/1700);
+  // Sterne nur nachts, zwei Ebenen gegenläufig
+  if (starA && nightF > 0.02){
+    const na = Math.pow(nightF,1.4);
+    ctx.globalAlpha = (reduceMotion?.8:.68+.32*Math.sin(tNow/1700))*na;
     ctx.drawImage(starA,0,0,W,H);
-    ctx.globalAlpha = reduceMotion ? .8 : .68+.32*Math.cos(tNow/2300);
+    ctx.globalAlpha = (reduceMotion?.8:.68+.32*Math.cos(tNow/2300))*na;
     ctx.drawImage(starB,0,0,W,H);
     ctx.globalAlpha = 1;
   }
+  drawCelestial(dayRaw);
 
-  // Sternschnuppe: selten und flüchtig
-  if (!reduceMotion){
+  // Sternschnuppe: selten, flüchtig und nur bei Nacht
+  if (!reduceMotion && nightF > 0.5){
     if (!shoot && tNow > nextShoot){
       shoot = { sx:W*(.12+Math.random()*.6), sy:H*(.05+Math.random()*.18),
                 vx:(Math.random()<.5?-1:1)*(430+Math.random()*260),
@@ -1929,6 +2085,16 @@ function frame(){
   drawBirds();
   drawEffects();
   ctx.restore();
+
+  /* Tageslicht über allem Weltlichen: warmes Licht am Tag, blaue Tiefe nachts */
+  if (dayS > 0.01){
+    ctx.fillStyle = 'rgba(255,238,205,'+(0.15*dayS).toFixed(3)+')';
+    ctx.fillRect(0,0,cv.width,cv.height);
+  }
+  if (nightF > 0.01){
+    ctx.fillStyle = 'rgba(12,22,42,'+(0.20*nightF).toFixed(3)+')';
+    ctx.fillRect(0,0,cv.width,cv.height);
+  }
 
   // Die Hilfeseite nutzt dieselbe Schleife — aber nur, solange sie offen ist
   if (helpCards.length && !helpEl.hidden) paintHelpCards();
@@ -2497,9 +2663,12 @@ function buildHelp(){
       'und Passanten, die ziellos umherlaufen. Über der Stadt ziehen Vogelschwärme '+
       'und Wolkenschatten, darüber funkelnde Sterne mit Mond — und mit etwas Geduld '+
       'eine Sternschnuppe. Bäume geben Glühwürmchen von sich, das Rathaus trägt eine '+
-      'wehende Fahne. All dies ist Dekoration und kostet keine Münzen. Wer in den '+
-      'Systemeinstellungen bewegungsarme Darstellung wählt, bekommt die ruhige '+
-      'Variante ohne Tierleben.</p>');
+      'wehende Fahne. All dies ist Dekoration und kostet keine Münzen. Und die '+
+      'Zeit dreht sich: alle zweieinhalb Minuten wandert die Sonne über den '+
+      'Himmel, nachts leuchten Sterne und Mond — Laternen und Glühwürmchen '+
+      'wachen auf. Wer in den Systemeinstellungen bewegungsarme Darstellung '+
+      'wählt, bekommt die ruhige Variante ohne Tierleben bei festem '+
+      'Nachmittagslicht.</p>');
 
   add('<h2>Stillstand</h2>'+
       '<p><span class="flag" style="background:#C46A5C"></span>'+
