@@ -17,6 +17,8 @@ html,body{height:100%;overflow:hidden}
 body{background:var(--night);color:#E8EDEF;font-family:"IBM Plex Sans",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;touch-action:manipulation}
 #c{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
+#vg{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(115% 90% at 50% 42%, transparent 54%, rgba(3,8,12,.5) 100%)}
 .bar{position:fixed;top:0;left:0;right:0;z-index:2;display:flex;align-items:flex-start;
   justify-content:space-between;padding:18px 18px 0;gap:12px;pointer-events:none}
 .purse{display:flex;align-items:center;gap:9px}
@@ -150,6 +152,7 @@ body{background:var(--night);color:#E8EDEF;font-family:"IBM Plex Sans",system-ui
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="vg" aria-hidden="true"></div>
 <header class="bar">
   <div class="purse">
     <div class="coin"></div>
@@ -308,6 +311,24 @@ const key = (x,y) => x + ',' + y;
 const at  = (x,y) => state.tiles.get(key(x,y));
 const now = () => Date.now();
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- Ambiente: Zustand für alles, was nur lebt und nichts kostet ---- */
+let walkers = [], walkerNetSize = -1;
+let birds = [], nextFlock = now() + 7000;
+let shoot = null, nextShoot = now() + 9000 + Math.random()*14000;
+let starA = null, starB = null;
+let lastFrame = now();
+let clouds = [];
+for (let ci=0; ci<3; ci++){
+  const blobs = [];
+  const bn = 5+((Math.random()*3)|0);
+  for (let k=0;k<bn;k++)
+    blobs.push({ ox:(Math.random()-.5)*560, oy:(Math.random()-.5)*130,
+                 r:110+Math.random()*150 });
+  clouds.push({ fy:.15+Math.random()*.7,
+                sp:(4.5+Math.random()*4)*(Math.random()<.5?-1:1),
+                off:Math.random()*4000, blobs });
+}
 
 /* ============================================================
    2. STRASSENNETZ
@@ -488,10 +509,43 @@ function resize(){
   cv.width = W*DPR; cv.height = H*DPR;
   sky = ctx.createRadialGradient(W/2, H*0.42, 40, W/2, H*0.42, Math.max(W,H)*0.78);
   sky.addColorStop(0,'#15252F'); sky.addColorStop(1,'#0A141B');
+  buildSky();
   if (!started) resetView(); else clampCam();
 }
 let started = false;
 addEventListener('resize', resize);
+
+/* Der Himmel wird einmal je Auflösung vorberechnet: zwei Sternebenen plus
+   Mond. Im Bild genügen dann zwei Kopien mit pulsierender Deckkraft. */
+function buildSky(){
+  function layer(n){
+    const c = document.createElement('canvas');
+    c.width = Math.max(2,W*DPR); c.height = Math.max(2,H*DPR);
+    const g = c.getContext('2d'); g.scale(DPR,DPR);
+    g.fillStyle = '#DAE5E9';
+    for (let i=0;i<n;i++){
+      const x = Math.random()*W, y = Math.random()*H*.75,
+            r = .35+Math.random()*Math.random()*1.15;
+      g.globalAlpha = .16+Math.random()*.5;
+      g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+      if (r>1.05){ g.fillRect(x-.5,y-r*3,1,r*6); g.fillRect(x-r*3,y-.5,r*6,1); }
+    }
+    return g;
+  }
+  const g1 = layer(90);
+  const mx = W*.76, my = H*.235, mr = 11;
+  const halo = g1.createRadialGradient(mx,my,mr*.4, mx,my,mr*5);
+  halo.addColorStop(0,'rgba(222,232,236,.20)');
+  halo.addColorStop(1,'rgba(222,232,236,0)');
+  g1.globalAlpha = 1; g1.fillStyle = halo;
+  g1.beginPath(); g1.arc(mx,my,mr*5,0,7); g1.fill();
+  g1.fillStyle = '#D6E0E4';
+  g1.beginPath(); g1.arc(mx,my,mr,0,7); g1.fill();
+  g1.fillStyle = 'rgba(13,23,31,.78)';
+  g1.beginPath(); g1.arc(mx-mr*.45,my-mr*.2,mr*.95,0,7); g1.fill();
+  starA = g1.canvas;
+  starB = layer(55).canvas;
+}
 
 /* ============================================================
    5. GEOMETRIE-HELFER
@@ -1070,6 +1124,27 @@ function paintHouse(g, type, level, mode){
     g.beginPath(); g.moveTo(ax2-4,ay2-mast*0.65); g.lineTo(ax2+4,ay2-mast*0.65); g.stroke();
     g.fillStyle = lit ? '#F2B035' : shade('#8B9095',dim);
     g.beginPath(); g.arc(ax2,ay2-mast-1,1.9,0,7); g.fill();
+
+    if (!big){                       // TV-Antenne auf dem Treppenhaus
+      g.strokeStyle = shade(trimC,-10+dim); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(cx,cy-boxH); g.lineTo(cx,cy-boxH-12); g.stroke();
+      g.beginPath(); g.moveTo(cx-5,cy-boxH-8); g.lineTo(cx+5,cy-boxH-8);
+      g.moveTo(cx-3.5,cy-boxH-11); g.lineTo(cx+3.5,cy-boxH-11); g.stroke();
+      g.fillStyle = shade('#C46A5C',dim);
+      g.beginPath(); g.arc(cx,cy-boxH-13,1.2,0,7); g.fill();
+    } else {                         // Satellitenschüssel am Staffelgeschoss
+      const dx3 = cx-bwx*.32, dy3 = cy-boxH+bhx*.16;
+      g.strokeStyle = shade(trimC,-12+dim); g.lineWidth = 1.2;
+      g.beginPath(); g.moveTo(dx3,dy3); g.lineTo(dx3,dy3-7); g.stroke();
+      g.save(); g.translate(dx3,dy3-7); g.rotate(-.55);
+      g.fillStyle = shade('#C4CED2',-12+dim);
+      g.beginPath(); g.ellipse(0,-1,4.8,3.4,0,0,7); g.fill();
+      g.fillStyle = shade('#C4CED2',12+dim);
+      g.beginPath(); g.ellipse(-1.2,-1.9,2.3,1.5,0,0,7); g.fill();
+      g.restore();
+      g.fillStyle = shade(trimC,4+dim);
+      g.beginPath(); g.arc(dx3+2.6,dy3-9.4,1,0,7); g.fill();
+    }
     return;
   }
 
@@ -1155,8 +1230,8 @@ function paintHouse(g, type, level, mode){
     const top = [(r1[0]+r2[0])/2, (r1[1]+r2[1])/2];
     g.strokeStyle = '#93A4AF'; g.lineWidth = 1.5;
     g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(top[0],top[1]-20); g.stroke();
-    g.fillStyle = '#F2B035';
-    poly(g,[[top[0],top[1]-20],[top[0]+14,top[1]-16],[top[0],top[1]-11]]); g.fill();
+    g.fillStyle = '#F2B035';   // Mastknauf — die Fahne selbst weht dynamisch
+    g.beginPath(); g.arc(top[0],top[1]-21,1.7,0,7); g.fill();
   }
 }
 
@@ -1281,13 +1356,59 @@ function drawRoad(gx,gy,p){
   const Ti=[p.x,p.y-TH*F/2], Ri=[p.x+TW*F/2,p.y], Bi=[p.x,p.y+TH*F/2], Li=[p.x-TW*F/2,p.y];
   ctx.fillStyle = live ? '#6E6555' : '#3C453D';
   diamond(ctx,p.x,p.y,TW*F,TH*F); ctx.fill();
+
+  let deg = 0;
   const links = [[[1,0],Ri,Bi,B,R],[[-1,0],Li,Ti,T,L],[[0,1],Bi,Li,L,B],[[0,-1],Ti,Ri,R,T]];
   for (const [d,i1,i2,o2,o1] of links){
     const n = at(gx+d[0],gy+d[1]);
     if (!n || (n.type!=='road' && n.type!=='hall')) continue;
+    deg++;
     poly(ctx,[i1,i2,o2,o1]); ctx.fill();
   }
-  if (live){  // Pflastersteine
+
+  if (live){
+    // Bordstein: dunkle Außenkante, Lichtkante zur Nordseite
+    ctx.strokeStyle = 'rgba(12,18,15,.55)'; ctx.lineWidth = 1;
+    diamond(ctx,p.x,p.y,TW*F,TH*F); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.beginPath(); ctx.moveTo(Ti[0],Ti[1]); ctx.lineTo(Li[0],Li[1]); ctx.stroke();
+
+    // Mittellinie in jeder angeschlossenen Richtung
+    ctx.strokeStyle = 'rgba(233,223,199,.27)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    for (const [dx,dy] of N4){
+      const n = at(gx+dx,gy+dy);
+      if (!n || (n.type!=='road' && n.type!=='hall')) continue;
+      const ux = dx*TW*F*0.5, uy = dy*TH*F*0.5;
+      ctx.beginPath();
+      ctx.moveTo(p.x+ux*.52, p.y+uy*.52);
+      ctx.lineTo(p.x+ux*.94, p.y+uy*.94);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+
+    // Kanaldeckel auf verstreuten Feldern
+    if ((gx*7+gy*5)%11 === 0){
+      ctx.fillStyle = 'rgba(18,24,20,.55)';
+      ctx.beginPath(); ctx.ellipse(p.x+TW*.08, p.y+TH*.05, 3.4, 1.8, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.09)'; ctx.lineWidth = .8; ctx.stroke();
+    }
+
+    // Laterne an Kreuzungen und Endpunkten
+    if (deg >= 2 && (gx*31+gy*17)%4 === 0){
+      const lx = p.x-TW*.30, ly = p.y-TH*.03;
+      ctx.fillStyle = 'rgba(242,176,53,.08)';
+      ctx.beginPath(); ctx.ellipse(lx+4, ly+1, 14, 6.5, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#2A3338'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx,ly-15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx,ly-15); ctx.lineTo(lx+4.4,ly-16.4); ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = 'rgba(255,206,110,.22)';
+      ctx.beginPath(); ctx.arc(lx+5, ly-15.4, 4.8, 0, 7); ctx.fill();
+      ctx.fillStyle = '#FFD98F';
+      ctx.beginPath(); ctx.arc(lx+5, ly-15.4, 1.7, 0, 7); ctx.fill();
+    }
+
+    // Pflastersteine
     ctx.fillStyle = 'rgba(0,0,0,.14)';
     for (let i=0;i<5;i++){
       const a = -0.3+i*0.16;
@@ -1295,6 +1416,10 @@ function drawRoad(gx,gy,p){
       diamond(ctx, p.x-(a)*TW*0.5, p.y+(a)*TH*0.5, 9, 5); ctx.fill();
     }
   } else {
+    // Verlassene Straße: Schutt und Risse statt Pflaster
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    diamond(ctx, p.x+((gx*11+gy*3)%9)-4, p.y+((gy*7+gx)%5)-2, 4.5, 2.2); ctx.fill();
+    diamond(ctx, p.x+((gy*13+gx*5)%7)-3, p.y+((gx*3+gy*11)%5)-1, 3, 1.6); ctx.fill();
     ctx.strokeStyle = 'rgba(196,106,92,.7)'; ctx.lineWidth = 1.2; ctx.setLineDash([3,3]);
     diamond(ctx,p.x,p.y,TW*F,TH*F); ctx.stroke(); ctx.setLineDash([]);
   }
@@ -1340,7 +1465,7 @@ function drawGround(){
       diamond(ctx,p.x,p.y,TW,TH); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.045)'; ctx.lineWidth = 1; ctx.stroke();
 
-      // Grasbüschel auf freien Feldern
+      // Grasbüschel, Blumen, Steinchen auf freien Feldern
       if (!b && (gx*7+gy*13)%4 === 0){
         ctx.strokeStyle = 'rgba(150,185,150,.28)'; ctx.lineWidth = 1;
         const ox = ((gx*29+gy*17)%9)-4, oy = ((gx*13+gy*31)%5)-2;
@@ -1350,6 +1475,19 @@ function drawGround(){
           ctx.beginPath(); ctx.moveTo(p.x+ox+i*3, p.y+oy);
           ctx.lineTo(p.x+ox+i*3+i+sw, p.y+oy-4-Math.abs(i)); ctx.stroke();
         }
+      } else if (!b && (gx*5+gy*11)%7 === 0){
+        const cols = ['#C79A6E','#C9B36A','#9FB86A'];
+        for (let k=0;k<3;k++){
+          ctx.fillStyle = cols[k];
+          ctx.beginPath();
+          ctx.arc(p.x+(((gx*(k+3)+gy*(k+7))%11)-5),
+                  p.y+(((gx*(k+5)+gy*3)%7)-3), 1.1, 0, 7);
+          ctx.fill();
+        }
+      } else if (!b && (gx*17+gy*9)%9 === 0){
+        ctx.fillStyle = 'rgba(146,160,152,.28)';
+        diamond(ctx, p.x+((gx*11+gy)%9)-4, p.y+((gy*13+gx*3)%5)-2, 5, 2.4); ctx.fill();
+        diamond(ctx, p.x+((gy*7)%7)-1, p.y+((gx*5)%5), 3.4, 1.7); ctx.fill();
       }
       if (b && b.type === 'road') drawRoad(gx,gy,p);
 
@@ -1411,6 +1549,9 @@ function drawBuilding(b, ghost){
   ctx.restore();
   if (ghost) return;
 
+  // Die Rathausfahne weht — als einziges Teil dynamisch über dem Sprite
+  if (b.type === 'hall' && !cut) drawPennant(p.x, p.y - s.h - s.roofH - 20);
+
   // Rauch aus dem Schornstein, solange produziert wird
   if (!cut && !ready && s.time > 0 && sp.smoke && !reduceMotion)
     puffSmoke(ctx, p.x + sp.smoke[0], p.y + sp.smoke[1], b.x*0.31 + b.y*0.17);
@@ -1436,6 +1577,22 @@ function drawBuilding(b, ghost){
       ctx.beginPath();
       ctx.ellipse(cx, cy, 1.4 + q*8.4, 0.6 + q*3.7, 0, 0, Math.PI*2);
       ctx.stroke();
+    }
+  }
+
+  /* Glühwürmchen um Baumkronen — nur zwei Punkte je Baum, keine Partikel */
+  if (tt.tree && !reduceMotion){
+    const big2 = tt.tree === 'big', n2 = big2 ? 2 : 1;
+    const cyc = p.y - tt.trunkH - (big2 ? 17 : 9);
+    for (let i=0;i<n2;i++){
+      const ph = now()/1000*.5 + i*2.7 + b.x*.83 + b.y*1.31;
+      const rr = 9 + 5*Math.sin(ph*.8 + i*2.1);
+      const al = .2 + .2*Math.sin(ph*4.3 + i);
+      if (al <= .02) continue;
+      ctx.fillStyle = 'rgba(255,213,128,'+al.toFixed(3)+')';
+      ctx.beginPath();
+      ctx.arc(p.x+Math.cos(ph*1.25)*rr, cyc+Math.sin(ph*1.6)*rr*.38, 1.25, 0, 7);
+      ctx.fill();
     }
   }
 
@@ -1517,6 +1674,144 @@ function puffSmoke(g, x, y, phase){
   g.globalAlpha = 1;
 }
 
+/* ============================================================
+   LEBEN IM BILD
+   Passanten brauchen kein Wegfinden: sie laufen los, und an jeder
+   Kreuzung entscheidet der Zufall unter den anliegenden Straßenfeldern.
+   Vögel, Wolkenschatten und Sternschnuppen leben allein von der Uhr.
+============================================================ */
+function netNeighbors(x,y){
+  const out = [];
+  for (const [dx,dy] of N4) if (state.net.has(key(x+dx,y+dy))) out.push([x+dx,y+dy]);
+  return out;
+}
+function reseedWalkers(){
+  walkerNetSize = state.net.size;
+  walkers = [];
+  if (reduceMotion || !state.net.size) return;
+  const starts = [...state.net];
+  const n = Math.max(2, Math.min(14, Math.floor(state.net.size/3)));
+  for (let i=0;i<n;i++){
+    const [sx,sy] = starts[(Math.random()*starts.length)|0].split(',').map(Number);
+    const nb = netNeighbors(sx,sy);
+    if (!nb.length) continue;
+    const nxt = nb[(Math.random()*nb.length)|0];
+    walkers.push({ fx:sx, fy:sy, tx:nxt[0], ty:nxt[1], px:sx, py:sy,
+      t:Math.random(), spd:.4+Math.random()*.3, ph:Math.random()*7,
+      col:['#CBD8DC','#C46A5C','#8FA6B8','#B89F6A','#7E8E96','#A67B5B'][i%6],
+      hat:i%3===0 });
+  }
+}
+function stepWalkers(dt){
+  if (state.net.size !== walkerNetSize) reseedWalkers();
+  for (const w of walkers){
+    w.t += w.spd*dt;
+    while (w.t >= 1){
+      w.t -= 1;
+      const nb = netNeighbors(w.tx,w.ty);
+      let opts = nb.filter(([x,y]) => !(x===w.px && y===w.py));
+      if (!opts.length) opts = nb;
+      if (!opts.length){ w.t = 0; break; }
+      const nxt = opts[(Math.random()*opts.length)|0];
+      w.px = w.tx; w.py = w.ty; w.fx = w.tx; w.fy = w.ty;
+      w.tx = nxt[0]; w.ty = nxt[1];
+    }
+  }
+}
+function drawWalker(w){
+  const a = iso(w.fx,w.fy), b2 = iso(w.tx,w.ty);
+  const x = a.x+(b2.x-a.x)*w.t, y = a.y+(b2.y-a.y)*w.t;
+  const bob = Math.abs(Math.sin(w.t*Math.PI))*1.5;
+  const leg = Math.sin(w.t*Math.PI*2+w.ph)*1.7;
+  ctx.fillStyle = 'rgba(0,0,0,.28)';
+  ctx.beginPath(); ctx.ellipse(x, y+.8, 3, 1.4, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = w.col; ctx.lineWidth = 1.9; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x-leg, y); ctx.lineTo(x, y-bob-2.4); ctx.lineTo(x+leg, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y-bob-2.4); ctx.lineTo(x, y-bob-6.6); ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.fillStyle = '#E5C6A3';
+  ctx.beginPath(); ctx.arc(x, y-bob-8.1, 1.7, 0, 7); ctx.fill();
+  if (w.hat){
+    ctx.fillStyle = 'rgba(20,28,32,.85)';
+    ctx.beginPath(); ctx.arc(x, y-bob-8.4, 1.9, Math.PI, 0); ctx.fill();
+  }
+}
+
+function stepBirds(dt){
+  const t = now();
+  if (!reduceMotion && !birds.length && t > nextFlock && state.bounds){
+    const b = state.bounds, dir = Math.random() < .5 ? 1 : -1;
+    const mem = [];
+    const n = 3+((Math.random()*3)|0);
+    for (let i=0;i<n;i++) mem.push({ dx:-dir*(i*15+Math.random()*9),
+      dy:(Math.random()-.5)*30, ph:Math.random()*7 });
+    birds.push({ x: dir>0 ? b.x0-320 : b.x1+320,
+      y: b.y0-110-Math.random()*100, vx: dir*(34+Math.random()*18), mem });
+    nextFlock = t+16000+Math.random()*20000;
+  }
+  for (const f of birds) f.x += f.vx*dt;
+  if (state.bounds)
+    birds = birds.filter(f => f.x > state.bounds.x0-560 && f.x < state.bounds.x1+560);
+}
+function drawBirds(){
+  if (reduceMotion) return;
+  const t = now();
+  ctx.strokeStyle = 'rgba(206,218,222,.75)'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+  for (const f of birds) for (const m of f.mem){
+    const wx = f.x+m.dx, wy = f.y+m.dy+Math.sin(t/700+m.ph)*4;
+    const fl = Math.sin(t/95+m.ph*5)*2.8;
+    ctx.beginPath();
+    ctx.moveTo(wx-5, wy-fl);
+    ctx.quadraticCurveTo(wx-2, wy+fl*.35, wx, wy);
+    ctx.quadraticCurveTo(wx+2, wy+fl*.35, wx+5, wy-fl);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
+
+/* Wolkenschatten wandern über die Stadt; die Formen stehen einmal fest,
+   die Position ergibt sich aus einer Modulo-Fahrt zwischen den Weltgrenzen. */
+function drawCloudShadows(){
+  const b = state.bounds; if (!b) return;
+  const span = (b.x1-b.x0)+1040, t = now()/1000;
+  ctx.fillStyle = 'rgba(3,9,13,.13)';
+  for (const c of clouds){
+    const drift = reduceMotion ? 0 : t*c.sp;
+    const cx = b.x0-520 + (((c.off+drift) % span) + span) % span;
+    const cy = b.y0 + c.fy*(b.y1-b.y0);
+    ctx.beginPath();
+    for (const bl of c.blobs){
+      ctx.moveTo(cx+bl.ox+bl.r, cy+bl.oy);
+      ctx.arc(cx+bl.ox, cy+bl.oy, bl.r, 0, 7);
+    }
+    ctx.fill();
+  }
+}
+
+/* Die Fahne am Rathaus ist das eine Teil, das nicht eingefroren im Sprite
+   steht — ein Sinusband am Mastknäufchen. */
+function drawPennant(px, py){
+  ctx.beginPath();
+  if (reduceMotion){
+    ctx.moveTo(px,py+1); ctx.lineTo(px+12,py+3); ctx.lineTo(px,py+5);
+  } else {
+    const t = now()/620, segs = 5, amp = 1.8, L = 13.5;
+    const top = [], bot = [];
+    for (let i=0;i<=segs;i++){
+      const u = i/segs;
+      top.push([px+u*L, py+1+u*1.1+Math.sin(t+u*4.2)*amp*u]);
+      bot.push([px+u*L, py+4.2+u*1.1+Math.sin(t+u*4.2+.85)*amp*u]);
+    }
+    ctx.moveTo(top[0][0],top[0][1]);
+    for (const q of top) ctx.lineTo(q[0],q[1]);
+    for (let i=segs;i>=0;i--) ctx.lineTo(bot[i][0],bot[i][1]);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#E9AC39'; ctx.fill();
+  ctx.strokeStyle = 'rgba(122,76,15,.5)'; ctx.lineWidth = .7; ctx.stroke();
+}
+
 function drawEffects(){
   const t = now();
   state.puffs = state.puffs.filter(p => t-p.t < 620);
@@ -1546,13 +1841,50 @@ function swayOf(t, phase){
 }
 
 function frame(){
+  const tNow = now();
+  let dt = (tNow-lastFrame)/1000; lastFrame = tNow;
+  if (dt > .05) dt = .05; if (dt < 0) dt = 0;
+
   // Böen schwellen langsam an und ab; ein Sinus für die ganze Karte
-  windT = now()/1500;
-  wind = reduceMotion ? 0 : (0.62 + 0.38*Math.sin(now()/4300)) * 0.05;
+  windT = tNow/1500;
+  wind = reduceMotion ? 0 : (0.62 + 0.38*Math.sin(tNow/4300)) * 0.05;
 
   ctx.save();
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+
+  // Sterne in zwei Ebenen, gegeneinander pulsierend — zwei Kopien genügen
+  if (starA){
+    ctx.globalAlpha = reduceMotion ? .8 : .68+.32*Math.sin(tNow/1700);
+    ctx.drawImage(starA,0,0,W,H);
+    ctx.globalAlpha = reduceMotion ? .8 : .68+.32*Math.cos(tNow/2300);
+    ctx.drawImage(starB,0,0,W,H);
+    ctx.globalAlpha = 1;
+  }
+
+  // Sternschnuppe: selten und flüchtig
+  if (!reduceMotion){
+    if (!shoot && tNow > nextShoot){
+      shoot = { sx:W*(.12+Math.random()*.6), sy:H*(.05+Math.random()*.18),
+                vx:(Math.random()<.5?-1:1)*(430+Math.random()*260),
+                vy:170+Math.random()*90, t0:tNow, dur:820 };
+    } else if (shoot){
+      const k = (tNow-shoot.t0)/shoot.dur;
+      if (k >= 1){ shoot = null; nextShoot = tNow+12000+Math.random()*20000; }
+      else {
+        const m2 = Math.hypot(shoot.vx,shoot.vy), ux = shoot.vx/m2, uy = shoot.vy/m2;
+        const hx = shoot.sx+shoot.vx*k*shoot.dur/1000,
+              hy = shoot.sy+shoot.vy*k*shoot.dur/1000;
+        const tail = 140*(1-k*.55);
+        const gr = ctx.createLinearGradient(hx,hy,hx-ux*tail,hy-uy*tail);
+        gr.addColorStop(0,'rgba(238,244,240,'+(.85*(1-k)).toFixed(3)+')');
+        gr.addColorStop(1,'rgba(238,244,240,0)');
+        ctx.strokeStyle = gr; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(hx-ux*tail,hy-uy*tail); ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
+    }
+  }
   ctx.restore();
 
   ctx.save();
@@ -1560,6 +1892,9 @@ function frame(){
   ctx.setTransform(z, 0, 0, z, DPR*(W/2 - cam.x*cam.z), DPR*(H/2 - cam.y*cam.z));
   drawGround();
   drawOffers();
+  drawCloudShadows();
+  stepWalkers(dt);
+  stepBirds(dt);
   const visB = viewBox(210);
   const list = [];
   for (const b of state.tiles.values()){
@@ -1567,8 +1902,17 @@ function frame(){
     if (!inBox(iso(b.x,b.y), visB)) continue;
     list.push(b);
   }
-  list.sort((a,b)=>(a.x+a.y)-(b.x+b.y));
-  for (const b of list) drawBuilding(b,false);
+  /* Gebäude und Passanten gemeinsam in Tiefenordnung bringen — wer südlicher
+     steht, deckt ab, ganz gleich ob Haus oder Fuß. */
+  const items = [];
+  for (const b of list) items.push({ d:b.x+b.y, f:() => drawBuilding(b,false) });
+  const visW = viewBox(40);
+  for (const w of walkers){
+    if (!inBox(iso((w.fx+w.tx)/2,(w.fy+w.ty)/2), visW)) continue;
+    items.push({ d:(w.fx+w.fy+w.tx+w.ty)/2+.02, f:() => drawWalker(w) });
+  }
+  items.sort((a,b)=>a.d-b.d);
+  for (const it of items) it.f();
   if (state.hover && TYPES[state.tool] && !at(state.hover.x,state.hover.y) && state.tool!=='road'){
     drawBuilding({x:state.hover.x,y:state.hover.y,type:state.tool,level:0,born:0,conn:true},true);
   }
@@ -1582,6 +1926,7 @@ function frame(){
       ctx.restore();
     }
   }
+  drawBirds();
   drawEffects();
   ctx.restore();
 
@@ -2147,6 +2492,14 @@ function buildHelp(){
       'vier Nachbarfelder eine Straße ist, die lückenlos zum Rathaus führt. '+
       'Abgeschnittene Stücke werden rot gestrichelt markiert und zählen nicht. '+
       'Mit gedrücktem Zeiger lassen sich mehrere Felder am Stück pflastern.</p>');
+
+  add('<h2>Leben in der Stadt</h2><p>Belebte Straßen bekommen Laternen, Mittellinien '+
+      'und Passanten, die ziellos umherlaufen. Über der Stadt ziehen Vogelschwärme '+
+      'und Wolkenschatten, darüber funkelnde Sterne mit Mond — und mit etwas Geduld '+
+      'eine Sternschnuppe. Bäume geben Glühwürmchen von sich, das Rathaus trägt eine '+
+      'wehende Fahne. All dies ist Dekoration und kostet keine Münzen. Wer in den '+
+      'Systemeinstellungen bewegungsarme Darstellung wählt, bekommt die ruhige '+
+      'Variante ohne Tierleben.</p>');
 
   add('<h2>Stillstand</h2>'+
       '<p><span class="flag" style="background:#C46A5C"></span>'+
