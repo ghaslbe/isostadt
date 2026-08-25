@@ -1594,6 +1594,11 @@ function drawGround(){
       poly(ctx,[[p.x,p.y+TH/2],[p.x+TW/2,p.y],[p.x+TW/2,p.y+DEPTH],[p.x,p.y+TH/2+DEPTH]]); ctx.fill();
 
       const lit = (gx+gy)%2 === 0;
+      /* Blumenwiese: eine billige Sinusinsel im Feldraster entscheidet, wo
+         das Gras dichter und bunter steht — deterministisch, also ruhig. */
+      const mow = Math.sin(gx*0.37 + Math.sin(gy*0.29)*1.8)
+                + Math.cos(gy*0.33 + Math.sin(gx*0.23)*1.6);
+      const wiese = !b && mow > 1.15;
       ctx.fillStyle = lit ? '#3D5C4E' : '#375547';
       if (!b || !TYPES[b.type].aura){
         // Je stärker die Nachbarschaft verstärkt, desto wärmer der Boden
@@ -1606,17 +1611,41 @@ function drawGround(){
           const ramp = lit ? ['#47603F','#4F6A3C','#5C7539','#6A8036']
                            : ['#415A3A','#496437','#556E34','#637931'];
           ctx.fillStyle = ramp[Math.min(3, Math.floor(aura/0.6))];
+        } else if (wiese){
+          ctx.fillStyle = lit ? '#405A41' : '#3B543B';
         }
       }
       diamond(ctx,p.x,p.y,TW,TH); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.045)'; ctx.lineWidth = 1; ctx.stroke();
 
-      // Grasbüschel, Blumen, Steinchen auf freien Feldern
-      if (!b && (gx*7+gy*13)%4 === 0){
+      // Gras und Blumen: Wiesen üppig, Einzelbüschel verstreut.
+      // Der Wind läuft als Welle übers Feld — die Phase wandert mit (gx+gy).
+      if (!b && wiese){
+        ctx.lineWidth = 1;
+        const sw = wind ? Math.sin(windT*1.8 - (gx+gy)*0.45) * 42 * wind : 0;
+        for (let c=0;c<2;c++){                       // zwei dichte Horste
+          const ox = (((gx*(c+2)+gy*13)%13)-6)+c*4, oy = (((gx*7+gy*(c+5))%9)-4);
+          ctx.strokeStyle = 'rgba(158,196,148,.34)';
+          for (let i=-1;i<3;i++){
+            ctx.beginPath(); ctx.moveTo(p.x+ox+i*2.4, p.y+oy);
+            ctx.lineTo(p.x+ox+i*2.4+i*.8+sw*(.7+.3*((i+c)%2)), p.y+oy-5-Math.abs(i));
+            ctx.stroke();
+          }
+        }
+        const cols = ['#C46A5C','#D8A94E','#D9D3C0'];   // sieben Blüten
+        for (let k=0;k<7;k++){
+          const fx = p.x+(((gx*(k+2)+gy*(k+5))%19)-9);
+          const fy = p.y+(((gx*(k+7)+gy*(k+3))%11)-5);
+          ctx.fillStyle = cols[(gx+gy+k)%3];
+          ctx.beginPath(); ctx.arc(fx,fy,1.05,0,7); ctx.fill();
+          ctx.fillStyle = 'rgba(120,160,110,.5)';
+          ctx.fillRect(fx-.4, fy+.8, .8, 1.6);         // Stängel
+        }
+      } else if (!b && (gx*7+gy*13)%4 === 0){
         ctx.strokeStyle = 'rgba(150,185,150,.28)'; ctx.lineWidth = 1;
         const ox = ((gx*29+gy*17)%9)-4, oy = ((gx*13+gy*31)%5)-2;
-        // derselbe Wind, nur an der Halmspitze — ein Sinus je Feld
-        const sw = wind ? Math.sin(windT + (gx+gy)*0.6) * 34 * wind : 0;
+        // dieselbe Wanderwelle, nur an der Halmspitze
+        const sw = wind ? Math.sin(windT*1.8 - (gx+gy)*0.45) * 38 * wind : 0;
         for (let i=-1;i<2;i++){
           ctx.beginPath(); ctx.moveTo(p.x+ox+i*3, p.y+oy);
           ctx.lineTo(p.x+ox+i*3+i+sw, p.y+oy-4-Math.abs(i)); ctx.stroke();
@@ -2666,7 +2695,8 @@ function buildHelp(){
       'wehende Fahne. All dies ist Dekoration und kostet keine Münzen. Und die '+
       'Zeit dreht sich: alle zweieinhalb Minuten wandert die Sonne über den '+
       'Himmel, nachts leuchten Sterne und Mond — Laternen und Glühwürmchen '+
-      'wachen auf. Wer in den Systemeinstellungen bewegungsarme Darstellung '+
+      'wachen auf. Der Wind zieht in Wellen durchs Gras, und verstreute Inseln '+
+      'voller Blumen färben freie Wiesen. Wer in den Systemeinstellungen bewegungsarme Darstellung '+
       'wählt, bekommt die ruhige Variante ohne Tierleben bei festem '+
       'Nachmittagslicht.</p>');
 
