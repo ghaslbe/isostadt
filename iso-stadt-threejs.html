@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iso-Stadt — Three.js-Prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0E1B24; --amber:#F2B035; --fog:#8CA0A8; --alarm:#C46A5C;
+  --line:rgba(140,160,168,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--night);color:#E8EDEF;font-family:"IBM Plex Sans",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;touch-action:manipulation}
+#c{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
+#vg{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(115% 90% at 50% 42%, transparent 54%, rgba(3,8,12,.5) 100%)}
+#labels{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.lbl-wrap{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;text-align:center}
+.lbl-bar{width:30px;height:3px;background:rgba(10,20,27,.75);border-radius:2px;overflow:hidden;margin:0 auto 4px}
+.lbl-bar i{display:block;height:100%;background:rgba(242,176,53,.9)}
+.lbl-flag{width:13px;height:13px;transform:rotate(45deg);margin:0 auto}
+.lbl-flag.road{background:#C46A5C}
+.lbl-flag.pop{background:#6E93AE}
+.lbl-float{position:absolute;transform:translate(-50%,-100%);font-family:"IBM Plex Mono",monospace;
+  font-weight:600;font-size:16px;color:#F2B035;text-shadow:0 0 10px rgba(242,176,53,.6);
+  pointer-events:none;white-space:nowrap}
+.lbl-puff{position:absolute;transform:translate(-50%,-50%);border-radius:50%;
+  background:rgba(159,176,168,.4);pointer-events:none}
+.bar{position:fixed;top:0;left:0;right:0;z-index:3;display:flex;align-items:flex-start;
+  justify-content:space-between;padding:18px 18px 0;gap:12px;pointer-events:none}
+.purse{display:flex;align-items:center;gap:9px}
+.coin{width:15px;height:15px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 32% 28%,#FFDE93,var(--amber) 62%,#B57C12);
+  box-shadow:0 0 14px rgba(242,176,53,.45)}
+#coins{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:30px;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.purse .lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--fog)}
+.tally{text-align:right;font-size:11px;line-height:1.65;color:var(--fog)}
+.tally b{font-family:"IBM Plex Mono",monospace;color:#E8EDEF;font-weight:600;font-variant-numeric:tabular-nums}
+.tally b.warn{color:var(--alarm)}
+.tray{position:fixed;left:0;right:0;bottom:0;z-index:3;
+  padding:0 12px calc(14px + env(safe-area-inset-bottom));
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tray::-webkit-scrollbar{display:none}
+.card{flex:none;min-width:112px;text-align:left;cursor:pointer;
+  background:rgba(14,27,36,.82);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:3px;padding:9px 11px 10px;color:inherit;font:inherit;
+  transition:border-color .16s,background .16s,transform .16s}
+.card:hover{border-color:rgba(242,176,53,.4)}
+.card:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--amber);background:rgba(242,176,53,.1);transform:translateY(-3px)}
+.card .n{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;font-size:14px;
+  letter-spacing:-.01em;display:block;margin-bottom:3px}
+.card .m{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--fog);display:block;line-height:1.5}
+.card .m em{font-style:normal;color:var(--amber)}
+.card.broke .m em{color:var(--alarm)}
+.card.util{min-width:78px}.card.util .n{font-size:12px;margin:0}
+.card.sq{min-width:62px;width:62px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;padding:8px 4px;text-align:center}
+.card.sq .n{font-size:11px;margin:0;line-height:1.15}
+.card.sq .g{width:17px;height:17px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 32% 28%,#FFDE93,var(--amber) 62%,#B57C12);
+  box-shadow:0 0 10px rgba(242,176,53,.4)}
+.card.sq[aria-pressed="true"] .g{box-shadow:0 0 16px rgba(242,176,53,.75)}
+.topActs{position:fixed;left:18px;top:74px;z-index:3;display:flex;gap:6px}
+.topActs button{font:inherit;font-size:11px;letter-spacing:.02em;cursor:pointer;
+  color:#CBD8DC;padding:6px 11px;background:rgba(14,27,36,.82);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:3px;
+  transition:border-color .16s,color .16s}
+.topActs button:hover{border-color:rgba(242,176,53,.55);color:var(--amber)}
+.topActs button:active{background:rgba(242,176,53,.12)}
+.topActs button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media (max-width:520px){.topActs{top:64px}}
+.zoom{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:3;
+  display:flex;flex-direction:column;gap:6px}
+.zoom button{width:38px;height:38px;cursor:pointer;color:#CBD8DC;
+  background:rgba(14,27,36,.82);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:3px;
+  font-family:"IBM Plex Mono",monospace;font-size:17px;line-height:1;
+  transition:border-color .16s,color .16s}
+.zoom button:hover{border-color:rgba(242,176,53,.5);color:#F2B035}
+.zoom button:active{background:rgba(242,176,53,.12)}
+.zoom button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.sheet{position:fixed;inset:0;z-index:9;background:rgba(6,13,18,.78);
+  backdrop-filter:blur(6px);display:flex;justify-content:center;
+  align-items:flex-start;overflow-y:auto;padding:0 0 60px}
+.sheet[hidden]{display:none}
+.sheetInner{width:min(760px,100%);background:#101E28;border:1px solid var(--line);
+  border-radius:4px;margin:24px 14px}
+.sheetTop{position:sticky;top:0;background:#101E28;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;padding:16px 18px;z-index:2}
+.sheetTop h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
+  font-size:19px;letter-spacing:-.02em}
+.sheetTop button{width:32px;height:32px;background:none;border:1px solid var(--line);
+  border-radius:3px;color:var(--fog);cursor:pointer;font-size:14px}
+.sheetTop button:hover{border-color:rgba(242,176,53,.5);color:var(--amber)}
+.sheetBody{padding:6px 18px 26px}
+.sheetBody h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
+  font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);
+  margin:26px 0 10px}
+.sheetBody p{font-size:13px;line-height:1.65;color:#C3D0D5;margin:0 0 10px;max-width:62ch}
+.sheetBody b{color:#E8EDEF;font-weight:500}
+.chain{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:4px 0 8px}
+.chain::-webkit-scrollbar{display:none}
+.step{flex:none;width:126px;border:1px solid var(--line);border-radius:3px;
+  background:#0C1922;padding:8px;text-align:center}
+.step canvas{display:block;position:static;inset:auto;margin:0 auto;touch-action:auto}
+@keyframes cardGlow{
+  0%,100%{ filter:drop-shadow(0 0 3px rgba(242,176,53,.22)) }
+  50%    { filter:drop-shadow(0 0 10px rgba(242,176,53,.5)) }
+}
+.step canvas.glow{ animation:cardGlow 2.8s ease-in-out infinite }
+@media (prefers-reduced-motion:reduce){ .step canvas{ animation:none !important } }
+.step .num{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--amber);margin-bottom:3px}
+.sep{flex:none;align-self:center;color:rgba(242,176,53,.5);font-size:19px;line-height:1;
+  padding:0 2px;user-select:none}
+.scrollNote{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--fog);
+  margin:-4px 0 2px;letter-spacing:.04em}
+.step .sn{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;
+  font-size:12px;margin-top:4px;letter-spacing:-.01em}
+.step .sd{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--fog);
+  line-height:1.55;margin-top:4px}
+.step .sd em{font-style:normal;color:var(--amber)}
+.step .sd i{font-style:normal;color:#8FC0D8}
+.btnRow{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 4px}
+.act{font:inherit;font-size:12px;cursor:pointer;color:#DCE5E8;padding:7px 12px;
+  background:#0C1922;border:1px solid var(--line);border-radius:3px;
+  transition:border-color .16s,color .16s}
+.act:hover{border-color:rgba(242,176,53,.55);color:var(--amber)}
+.act:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.act.warn:hover{border-color:rgba(196,106,92,.7);color:var(--alarm)}
+.saveBox{width:100%;height:88px;margin-top:8px;resize:vertical;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.5;
+  color:#C3D0D5;background:#0A141B;border:1px solid var(--line);
+  border-radius:3px;padding:8px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px;
+  color:#C3D0D5;margin:2px 0 4px;align-items:baseline}
+.keys kbd{font-family:"IBM Plex Mono",monospace;font-size:11px;background:#0C1922;
+  border:1px solid var(--line);border-radius:3px;padding:2px 6px;color:#E8EDEF;white-space:nowrap}
+.flag{display:inline-block;width:9px;height:9px;transform:rotate(45deg);
+  margin-right:6px;vertical-align:middle}
+.tip{position:fixed;left:0;right:0;z-index:3;text-align:center;font-size:11.5px;
+  color:var(--fog);pointer-events:none;padding:0 20px;transition:opacity .3s;
+  bottom:calc(112px + env(safe-area-inset-bottom))}
+@media (max-width:520px){#coins{font-size:24px}
+  .tip{bottom:calc(108px + env(safe-area-inset-bottom))}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="vg" aria-hidden="true"></div>
+<div id="labels" aria-hidden="true"></div>
+<header class="bar">
+  <div class="purse">
+    <div class="coin"></div>
+    <div><div id="coins">220</div><span class="lbl">Münzen</span></div>
+  </div>
+  <div class="tally">
+    <div>Einwohner frei <b id="pop">0 / 0</b></div>
+    <div>Ertrag/Min <b id="rate">0</b></div>
+    <div>Stillstand <b id="cut">0</b></div>
+    <div>Freie Felder <b id="free">0</b></div>
+  </div>
+</header>
+<div class="zoom" role="group" aria-label="Ansicht">
+  <button id="zin"  aria-label="Näher heranzoomen">+</button>
+  <button id="zout" aria-label="Weiter herauszoomen">&#8722;</button>
+  <button id="zfit" aria-label="Ganze Stadt zeigen">&#9633;</button>
+  <button id="zhelp" aria-label="Hilfe und Gebäudeübersicht">?</button>
+</div>
+
+<div class="sheet" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+  <div class="sheetInner">
+    <header class="sheetTop">
+      <h1 id="helpTitle">Iso-Stadt (Three.js)</h1>
+      <button id="helpClose" aria-label="Hilfe schließen">&#10005;</button>
+    </header>
+    <div class="sheetBody" id="helpBody"></div>
+  </div>
+</div>
+<div class="topActs">
+  <button id="bSave" title="Spielstand als Datei herunterladen">Sichern</button>
+  <button id="bLoad" title="Spielstand aus einer Datei einlesen">Laden</button>
+</div>
+
+<p class="tip" id="tip">Straßen vom Rathaus aus verlegen. Gebäude lang halten, um sie zu versetzen.</p>
+<nav class="tray" id="tray" aria-label="Baumenü"></nav>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+"use strict";
+
+/* ============================================================
+   1. SPIELDATEN — unverändert gegenüber der Canvas2D-Fassung.
+   Die Balance, alle Kosten/Erträge/Zeiten bleiben identisch;
+   nur die Darstellung wechselt auf Three.js/WebGL.
+============================================================ */
+const TYPES = {
+  road: { key:'road', label:'Straße', cost:10, isRoad:true,
+    stages:[{name:'Straße', yield:0, time:0, pop:0, h:0, roofH:0, upgrade:null}] },
+
+  hut: { key:'hut', label:'Hütte', cost:50, needsRoad:true,
+    stages:[
+      {name:'Hütte',      yield:8,   time:8,   pop:2,  h:19, roofH:19, floors:1,
+       style:'rustic', wall:'#A08765', roof:'#C0A469', trim:'#5A452F', upgrade:170},
+      {name:'Fachwerkhaus', yield:30, time:14,  pop:6,  h:31, roofH:15, floors:2,
+       style:'timber', wall:'#E0D6C0', roof:'#9C6248', trim:'#4E3B2D', upgrade:520},
+      {name:'Stadthaus',  yield:95,  time:26,  pop:14, h:46, roofH:17, floors:3,
+       style:'stone',  wall:'#E6DCC6', roof:'#7C6F80', trim:'#8E836E', upgrade:1600},
+      {name:'Wohnblock',  yield:340, time:60,  pop:34, h:58, roofH:6,  floors:4,
+       style:'modern', wall:'#C8C7C0', roof:'#5A5F62', trim:'#8B9095', upgrade:5200},
+      {name:'Hochhaus',   yield:1150, time:110, pop:82,  h:68, roofH:6, floors:6,
+       style:'glass',  wall:'#8E9AA2', roof:'#4A5660', trim:'#B3BDC3', upgrade:16000},
+      {name:'Arkologie',  yield:4200, time:240, pop:210, h:80, roofH:6, floors:7,
+       style:'arc',    wall:'#46586E', roof:'#2C3A4C', trim:'#7FD8D0', upgrade:null}
+    ] },
+
+  shop: { key:'shop', label:'Werkstatt', cost:320, needsRoad:true,
+    stages:[
+      {name:'Werkstatt',   yield:120,   time:30,  pop:0, staff:4,   h:23, roofH:11, floors:1,
+       style:'timber', wall:'#C9B99C', roof:'#67757D', trim:'#463A2E', upgrade:820},
+      {name:'Manufaktur',  yield:520,   time:70,  pop:0, staff:14,  h:34, roofH:13, floors:2,
+       style:'stone',  wall:'#B5836B', roof:'#5E5A5E', trim:'#7A5644', upgrade:2400},
+      {name:'Fabrik',      yield:1560,  time:180, pop:0, staff:40,  h:56, roofH:9,  floors:4,
+       style:'brick',  wall:'#8E4536', roof:'#454E52', trim:'#C9B48C', upgrade:9000},
+      {name:'Montagewerk', yield:4800,  time:300, pop:0, staff:95,  h:66, roofH:6,  floors:3,
+       style:'plant',  wall:'#9AA39F', roof:'#4E5658', trim:'#C4713A', upgrade:30000},
+      {name:'Fusionswerk', yield:15000, time:600, pop:0, staff:210, h:76, roofH:6,  floors:4,
+       style:'fusion', wall:'#38485C', roof:'#22303F', trim:'#6FD9E6', upgrade:null}
+    ] },
+
+  tree1: { key:'tree1', label:'Kleiner Baum', cost:800, aura:0.60, tree:'small',
+    trunkH:14, sway:0.052,
+    stages:[{name:'Kleiner Baum', yield:0, time:0, pop:0, h:26, roofH:0, floors:0, upgrade:null}] },
+
+  tree2: { key:'tree2', label:'Großer Baum', cost:2500, aura:1.00, tree:'big',
+    trunkH:25, sway:0.030,
+    stages:[{name:'Großer Baum', yield:0, time:0, pop:0, h:46, roofH:0, floors:0, upgrade:null}] },
+
+  well: { key:'well', label:'Brunnen', cost:240, aura:0.30,
+    wall:'#A8AFA9', roof:'#6B4E3C', beam:'#4E3B2D',
+    stages:[{name:'Brunnen', yield:0, time:0, pop:0, h:11, roofH:12, floors:0, upgrade:null}] },
+
+  hall: { key:'hall', label:'Rathaus', cost:0, fixed:true,
+    stages:[{name:'Rathaus', yield:14, time:20, pop:5, h:42, roofH:22, floors:3,
+       style:'stone', wall:'#DED3B8', roof:'#3F5A6B', trim:'#8A7F68', clock:true, upgrade:null}] }
+};
+
+const TW = 68, TH = 34, DEPTH = 9;   // nur noch für Größenverhältnisse in den Sprites der Hilfeseite
+const P = 4;                    // Kantenlänge eines Bauabschnitts in Feldern
+const SMIN = -2, SMAX = 3;      // Weltgrenzen in Abschnitten
+const PLOT0 = 10000;            // Preis des ersten Zukaufs
+const N4 = [[1,0],[-1,0],[0,1],[0,-1]];
+
+let wind = 0, windT = 0;
+
+const state = {
+  coins:220, tiles:new Map(), net:new Set(), tool:'road',
+  hover:null, floats:[], puffs:[], moving:null,   // angehobenes Gebäude
+  plots: new Set(['0,0','1,0','0,1','1,1']),   // Startfläche: 8x8 Felder
+  cells: [],                                   // alle freigeschalteten Felder
+  bounds: null,
+  pop: { total:0, used:0 },
+  free: 0
+};
+
+const plotKey = (gx,gy) => Math.floor(gx/P) + ',' + Math.floor(gy/P);
+const unlocked = (gx,gy) => state.plots.has(plotKey(gx,gy));
+const plotPrice = () => Math.round(PLOT0 * Math.pow(1.5, state.plots.size - 4) / 500) * 500;
+
+function offers(){
+  const out = [];
+  for (const k of state.plots){
+    const [sx,sy] = k.split(',').map(Number);
+    for (const [dx,dy] of N4){
+      const nx = sx+dx, ny = sy+dy, nk = nx+','+ny;
+      if (nx<SMIN||nx>SMAX||ny<SMIN||ny>SMAX) continue;
+      if (state.plots.has(nk) || out.some(o=>o.k===nk)) continue;
+      out.push({ k:nk, sx:nx, sy:ny });
+    }
+  }
+  return out;
+}
+
+let groundDirty = true;
+function rebuildWorld(){
+  const cells = [];
+  for (const k of state.plots){
+    const [sx,sy] = k.split(',').map(Number);
+    for (let i=0;i<P;i++) for (let j=0;j<P;j++) cells.push([sx*P+i, sy*P+j]);
+  }
+  state.cells = cells;
+  groundDirty = true;
+}
+
+const key = (x,y) => x + ',' + y;
+const at  = (x,y) => state.tiles.get(key(x,y));
+const now = () => Date.now();
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let walkers = [], walkerNetSize = -1;
+let birds = [], nextFlock = now() + 7000;
+let clouds = [];
+for (let ci=0; ci<4; ci++){
+  clouds.push({ fy:.5+Math.random()*3, sp:(0.35+Math.random()*.35)*(Math.random()<.5?-1:1),
+    off:Math.random()*60, r:2.6+Math.random()*2.2 });
+}
+
+const DAY_CYCLE = 150000;          // ein voller Tag in Millisekunden
+let dayOffset = 0.32;              // Spielstart am Vormittag
+let dayF = 1, dayS = 1, nightF = 0;
+
+/* ============================================================
+   2. STRASSENNETZ — identisch zum Original.
+============================================================ */
+function computeNetwork(){
+  const net = new Set();
+  const hall = [...state.tiles.values()].find(b => b.type === 'hall');
+  if (!hall) return net;
+  const q = [];
+  const push = (x,y) => {
+    const k = key(x,y), t = state.tiles.get(k);
+    if (t && t.type === 'road' && !net.has(k)){ net.add(k); q.push(t); }
+  };
+  for (const [dx,dy] of N4) push(hall.x+dx, hall.y+dy);
+  while (q.length){ const c = q.pop(); for (const [dx,dy] of N4) push(c.x+dx, c.y+dy); }
+  return net;
+}
+function isConnected(b){
+  if (b.type === 'hall') return true;
+  if (!TYPES[b.type].needsRoad) return true;
+  return N4.some(([dx,dy]) => state.net.has(key(b.x+dx, b.y+dy)));
+}
+
+/* ============================================================
+   3. SPIELLOGIK — unverändert.
+============================================================ */
+function stageOf(b){ return TYPES[b.type].stages[b.level]; }
+function boost(b){
+  let f = 1;
+  for (const [dx,dy] of N4){ const n = at(b.x+dx,b.y+dy); if (n && TYPES[n.type].aura) f += TYPES[n.type].aura; }
+  return f;
+}
+function payout(b){
+  let y = stageOf(b).yield;
+  if (b.type === 'hall') y += Math.round(state.pop.total * 1.6);
+  return Math.round(y * boost(b));
+}
+function isReady(b){ return stageOf(b).time > 0 && b.active && b.paused == null && now() >= b.done; }
+const freePop = () => state.pop.total - state.pop.used;
+function progress(b){
+  const s = stageOf(b); if (!s.time) return 1;
+  const rest = b.paused != null ? b.paused : b.done - now();
+  return Math.min(1, Math.max(0, 1 - rest/(s.time*1000)));
+}
+function build(x,y,type){
+  const t = TYPES[type];
+  if (!unlocked(x,y)) return;
+  if (at(x,y)) return flash('Das Feld ist bereits bebaut.');
+  if (state.coins < t.cost) return flash('Zu wenig Münzen für ' + t.label + '.');
+  const need = t.stages[0].staff || 0;
+  if (need > freePop())
+    return flash(t.label + ' braucht ' + need + ' freie Einwohner — ' + freePop() + ' verfügbar.');
+  state.coins -= t.cost;
+  state.tiles.set(key(x,y), { x, y, type, level:0, conn:false, paused:null,
+    invested: t.cost, done: now() + t.stages[0].time*1000, born: now() });
+  puff(x,y); refresh();
+}
+function collect(b){
+  const amount = payout(b);
+  state.coins += amount;
+  b.done = now() + stageOf(b).time*1000;
+  const s = stageOf(b);
+  state.floats.push({ x:b.x, y:s.h*HS + s.roofH*HS + 0.5, z:b.y, text:'+'+amount, t:now() });
+  refresh();
+}
+function upgrade(b){
+  const cost = stageOf(b).upgrade;
+  if (cost === null) return flash(stageOf(b).name + ' ist voll ausgebaut.');
+  if (state.coins < cost) return flash('Ausbau kostet ' + cost + ' Münzen.');
+  const next = TYPES[b.type].stages[b.level+1];
+  const extra = (next.staff||0) - (stageOf(b).staff||0);
+  if (extra > freePop())
+    return flash(next.name + ' braucht ' + extra + ' Einwohner mehr — ' + freePop() + ' frei.');
+  state.coins -= cost; b.level++; b.invested = (b.invested||TYPES[b.type].cost) + cost;
+  b.done = now() + stageOf(b).time*1000; b.paused = null; b.born = now();
+  puff(b.x,b.y);
+  const ns = stageOf(b);
+  flash(ns.time
+    ? ns.name + ': ' + payout(b) + ' Münzen alle ' + ns.time + ' s.'
+    : ns.name + ' fertiggestellt.');
+  refresh();
+}
+function moveTo(gx, gy){
+  const src = state.moving;
+  if (!src) return;
+  const b = at(src.x, src.y);
+  if (!b){ state.moving = null; return; }
+  if (gx === src.x && gy === src.y){
+    state.moving = null;
+    return flash('Verschieben abgebrochen.');
+  }
+  if (!unlocked(gx, gy)) return flash('Dieses Feld gehört noch nicht zur Stadt.');
+  if (at(gx, gy)) return flash('Zielfeld ist belegt.');
+
+  state.tiles.delete(key(src.x, src.y));
+  b.x = gx; b.y = gy;
+  state.tiles.set(key(gx, gy), b);
+  state.moving = null;
+  puff(gx, gy);
+  refresh();
+  flash(stageOf(b).name + ' versetzt.');
+}
+function pickUp(b){
+  if (TYPES[b.type].fixed) return flash('Das Rathaus bleibt, wo es ist.');
+  state.moving = { x:b.x, y:b.y };
+  flash(stageOf(b).name + ' angehoben — freies Zielfeld antippen.');
+}
+function demolish(b){
+  if (TYPES[b.type].fixed) return flash('Das Rathaus bleibt stehen.');
+  state.coins += Math.floor((b.invested || TYPES[b.type].cost)/2);
+  state.tiles.delete(key(b.x,b.y)); puff(b.x,b.y); refresh();
+}
+function puff(x,y){
+  if (reduceMotion) return;
+  for (let i=0;i<6;i++) state.puffs.push({ x:x+(Math.random()-.5)*.5, y:0.15+Math.random()*.1,
+    z:y+(Math.random()-.5)*.5, r:.05+Math.random()*.06, t:now() });
+}
+
+/* ============================================================
+   4. WELT- UND KAMERA-MODELL (Three.js)
+   Ein Feld (gx,gy) liegt bei Weltposition (gx,0,gy). Die Kamera ist eine
+   Orthographic-Kamera unter dem klassischen 2:1-Winkel (Yaw 45°, Pitch 30°) —
+   das ergibt exakt dasselbe Rautenverhältnis wie TW:TH = 68:34 = 2:1 im
+   Original, nur eben aus echter 3D-Geometrie statt aus Pixelpfaden berechnet.
+============================================================ */
+const HS = 1/40;      // rechnet die alten "Pixel"-Höhen aus TYPES in Weltmaß um
+const FP = 0.62;      // Grundfläche eines Gebäudes (Anteil einer Kachel)
+
+const ISO_DIR = new THREE.Vector3(Math.SQRT1_2*Math.cos(Math.PI/6), Math.sin(Math.PI/6),
+                                   Math.SQRT1_2*Math.cos(Math.PI/6)).normalize();
+const CAM_DIST = 60;
+const BASE_VIEW = 11;   // sichtbare Welthöhe bei Zoom 1
+
+const cam = { x:0, z:0, zoom:1 };
+const ZMIN = 0.35, ZMAX = 3.2;
+
+const cv = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas:cv, antialias:true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1,1,1,-1, 0.1, 260);
+
+const hemi = new THREE.HemisphereLight(0xbfd6e6, 0x27331f, 0.55);
+scene.add(hemi);
+const fill = new THREE.AmbientLight(0x3a4a5c, 0.28);   // hält Nächte sichtbar statt schwarz
+scene.add(fill);
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1536,1536);
+sun.shadow.bias = -0.0015;
+sun.shadow.camera.left = -26; sun.shadow.camera.right = 26;
+sun.shadow.camera.top = 26; sun.shadow.camera.bottom = -26;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 90;
+sun.shadow.camera.updateProjectionMatrix();
+scene.add(sun, sun.target);
+const moonLight = new THREE.PointLight(0x9fb8d8, 0, 40);
+scene.add(moonLight);
+
+const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(0.7,16,16),
+  new THREE.MeshBasicMaterial({ color:0xfff2c4, fog:false }));
+const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(0.5,16,16),
+  new THREE.MeshBasicMaterial({ color:0xd6e0e4, fog:false }));
+scene.add(sunMesh, moonMesh);
+
+const starGeo = new THREE.BufferGeometry();
+{
+  const N = 700, pos = new Float32Array(N*3);
+  for (let i=0;i<N;i++){
+    const r = 90+Math.random()*20, th = Math.random()*Math.PI*2, ph = Math.random()*Math.PI*0.55;
+    pos[i*3]   = Math.cos(th)*Math.cos(ph)*r;
+    pos[i*3+1] = Math.sin(ph)*r + 20;
+    pos[i*3+2] = Math.sin(th)*Math.cos(ph)*r;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+}
+const starMat = new THREE.PointsMaterial({ color:0xE8EEF2, size:0.35, sizeAttenuation:true,
+  transparent:true, opacity:0, depthWrite:false, fog:false });
+const stars = new THREE.Points(starGeo, starMat);
+scene.add(stars);
+
+let W=0, H=0;
+function raycastGround(sx,sy){
+  const ndc = new THREE.Vector2((sx/W)*2-1, -(sy/H)*2+1);
+  raycaster.setFromCamera(ndc, camera);
+  const p = new THREE.Vector3();
+  raycaster.ray.intersectPlane(groundPlane, p);
+  return p || new THREE.Vector3();
+}
+const raycaster = new THREE.Raycaster();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+
+function toTile(sx,sy){
+  const p = raycastGround(sx,sy);
+  return { x: Math.round(p.x), y: Math.round(p.z) };
+}
+function updateCameraFrustum(){
+  const aspect = Math.max(0.1, W/H);
+  const viewH = BASE_VIEW/cam.zoom, viewW = viewH*aspect;
+  camera.left = -viewW/2; camera.right = viewW/2;
+  camera.top = viewH/2; camera.bottom = -viewH/2;
+  camera.updateProjectionMatrix();
+}
+function updateCameraPosition(){
+  camera.position.set(cam.x+ISO_DIR.x*CAM_DIST, ISO_DIR.y*CAM_DIST, cam.z+ISO_DIR.z*CAM_DIST);
+  camera.lookAt(cam.x, 0, cam.z);
+}
+function worldBounds(){
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+  for (const [gx,gy] of state.cells){
+    x0=Math.min(x0,gx); x1=Math.max(x1,gx); z0=Math.min(z0,gy); z1=Math.max(z1,gy);
+  }
+  if (x1<x0) return { x0:-1,x1:1,z0:-1,z1:1 };
+  return { x0:x0-0.55, x1:x1+0.55, z0:z0-0.55, z1:z1+0.55 };
+}
+function clampCam(){
+  const b = worldBounds(), m = 2.2/cam.zoom;
+  cam.x = Math.max(b.x0-m, Math.min(b.x1+m, cam.x));
+  cam.z = Math.max(b.z0-m, Math.min(b.z1+m, cam.z));
+  updateCameraPosition();
+}
+function zoomAt(sx,sy,factor){
+  updateCameraFrustum(); updateCameraPosition();
+  const before = raycastGround(sx,sy);
+  cam.zoom = Math.max(ZMIN, Math.min(ZMAX, cam.zoom*factor));
+  updateCameraFrustum(); updateCameraPosition();
+  const after = raycastGround(sx,sy);
+  cam.x += before.x-after.x; cam.z += before.z-after.z;
+  updateCameraPosition(); clampCam();
+}
+function panByScreenDelta(dxPx,dyPx){
+  updateCameraFrustum(); updateCameraPosition();
+  const cx=W/2, cy=H/2;
+  const a = raycastGround(cx,cy), b = raycastGround(cx+dxPx, cy+dyPx);
+  cam.x -= (b.x-a.x); cam.z -= (b.z-a.z);
+  updateCameraPosition(); clampCam();
+}
+function fitZoom(){
+  const b = worldBounds();
+  const spanX = b.x1-b.x0, spanZ = b.z1-b.z0, span = spanX+spanZ;
+  const availW = Math.max(80, W-24), availH = Math.max(80, H-230);
+  const ppuW = availW/(span*Math.SQRT1_2*0.5*2);   // 0.7071 Bildschirm-px je Welteinheit (siehe Ableitung)
+  const ppuH = availH/(span*0.3536);
+  const ppu = Math.min(ppuW, ppuH);
+  return Math.max(ZMIN, Math.min(2.4, ppu*BASE_VIEW/H));
+}
+function resetView(){
+  const b = worldBounds();
+  cam.x = (b.x0+b.x1)/2; cam.z = (b.z0+b.z1)/2;
+  cam.zoom = fitZoom();
+  updateCameraFrustum(); updateCameraPosition(); clampCam();
+}
+function resize(){
+  W = innerWidth; H = innerHeight;
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+  renderer.setSize(W,H);
+  updateCameraFrustum(); updateCameraPosition();
+  if (started) clampCam();
+}
+let started = false;
+addEventListener('resize', resize);
+
+/* ============================================================
+   5. MATERIAL-/GEOMETRIE-HELFER
+============================================================ */
+function shadeHex(hex, amt){
+  const n = parseInt(hex.slice(1),16);
+  const ch = v => Math.max(0,Math.min(255, (v)+amt));
+  return '#'+[ch(n>>16),ch((n>>8)&255),ch(n&255)].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+}
+const glowMaterials = [];   // Fenstermaterialien, deren Leuchten von nightF abhängt
+function stdMat(color, opts={}){
+  const m = new THREE.MeshStandardMaterial({ color, roughness:opts.rough??0.85, metalness:opts.metal??0.04,
+    emissive: opts.emissive??0x000000, emissiveIntensity: opts.emissiveIntensity??0,
+    transparent: !!opts.transparent, opacity: opts.opacity??1 });
+  return m;
+}
+function box(group,w,h,d,mat,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+  m.position.set(x,y,z); m.rotation.set(rx,ry,rz);
+  m.castShadow = true; m.receiveShadow = true;
+  group.add(m); return m;
+}
+function cyl(group,rt,rb,h,mat,x=0,y=0,z=0,seg=12){
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg), mat);
+  m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true;
+  group.add(m); return m;
+}
+function torus(group,r,tube,mat,y,tilt){
+  const m = new THREE.Mesh(new THREE.TorusGeometry(r,tube,8,28), mat);
+  m.rotation.x = Math.PI/2 + (tilt||0); m.position.y = y;
+  group.add(m); return m;
+}
+function sphere(group,r,mat,x,y,z,thetaLen){
+  const geo = thetaLen ? new THREE.SphereGeometry(r,16,10,0,Math.PI*2,0,thetaLen)
+                       : new THREE.SphereGeometry(r,14,10);
+  const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z);
+  m.castShadow = true; group.add(m); return m;
+}
+function gableRoof(group, w, rH, d, color, baseY){
+  const shape = new THREE.Shape();
+  shape.moveTo(-w/2,0); shape.lineTo(w/2,0); shape.lineTo(0,rH); shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth:d, bevelEnabled:false });
+  geo.translate(0,0,-d/2);
+  const m = new THREE.Mesh(geo, stdMat(color));
+  m.position.set(0, baseY, 0); m.castShadow = true; m.receiveShadow = true;
+  group.add(m); return m;
+}
+function winMat(baseColor){
+  const m = stdMat(shadeHex(baseColor,-15), { emissive:0xffce69, emissiveIntensity:0 });
+  glowMaterials.push(m);
+  return m;
+}
+// Local facade coordinates let the same joinery wrap around all four walls.
+function facade(group, angle, fp=FP){
+  const face = new THREE.Group();
+  face.rotation.y = angle;
+  face.position.set(Math.sin(angle)*fp/2,0,Math.cos(angle)*fp/2);
+  group.add(face);
+  return face;
+}
+function beam(group, ax,ay,az,bx,by,bz,width,mat){
+  const start = new THREE.Vector3(ax,ay,az), end = new THREE.Vector3(bx,by,bz);
+  const delta = end.clone().sub(start);
+  const mesh = box(group,width,delta.length(),width,mat);
+  mesh.position.copy(start.add(end).multiplyScalar(.5));
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+  return mesh;
+}
+function addFacadeDetails(group, s, type, h){
+  const st=s.style, old=['rustic','timber','stone','brick'].includes(st);
+  const trim=stdMat(s.trim), stone=stdMat(shadeHex(s.wall,-24));
+  const dark=stdMat('#35434A'), wood=stdMat('#654933'), leaf=stdMat('#527957');
+  const glass=winMat(st==='glass'?'#608EAA':'#819A9D');
+  const shutter=stdMat('#526D62'), flower=stdMat('#D79465');
+  const floors=s.floors, step=h/floors;
+  box(group,FP+.035,.065,FP+.035,stone,0,.032,0);
+  for(let side=0;side<4;side++){
+    const f=facade(group,side*Math.PI/2);
+    const detail=(w,ht,d,mat,x,y,z=.015)=>box(f,w,ht,d,mat,x,y,z);
+    if(st==='rustic') for(let i=1;i<10;i++) detail(.008,h-.07,.009,trim,-FP/2+i*FP/10,h/2+.025);
+    if(st==='brick'){
+      for(let y=.09,row=0;y<h;y+=.075,row++){
+        detail(FP,.006,.009,stone,0,y);
+        for(let x=-FP/2+.04+(row%2)*.065;x<FP/2;x+=.13) detail(.006,.07,.009,stone,x,y+.035);
+      }
+    }
+    for(let floor=0;floor<floors;floor++){
+      const y=step*(floor+.59), wh=Math.min(.17,step*.46), ww=st==='glass'?.21:.115;
+      if(floor>0) detail(FP+.03,old?.025:.035,.045,trim,0,step*floor);
+      for(const x of [-.165,.165]){
+        detail(ww+.032,wh+.032,.025,trim,x,y);
+        detail(ww,wh,.018,glass,x,y,.033);
+        if(st!=='glass'){
+          detail(.009,wh,.014,trim,x,y,.048);
+          detail(ww,.009,.014,trim,x,y,.048);
+        }
+        detail(ww+.055,.018,.075,stone,x,y-wh/2-.018,.027);
+        if(st==='rustic'||st==='timber'){
+          for(const sign of [-1,1]){
+            detail(.042,wh+.025,.025,shutter,x+sign*(ww/2+.03),y,.03);
+            for(let sl=0;sl<3;sl++) detail(.042,.006,.01,trim,x+sign*(ww/2+.03),y-wh*.3+sl*wh*.3,.047);
+          }
+          if((floor+side)%2===0){
+            detail(ww+.02,.04,.06,wood,x,y-wh/2-.038,.065);
+            detail(ww+.015,.02,.05,leaf,x,y-wh/2-.01,.065);
+            for(let n=-1;n<=1;n++) detail(.02,.022,.024,flower,x+n*.037,y-wh/2+.005,.07);
+          }
+        }
+        if(st==='stone') detail(ww+.065,.021,.05,trim,x,y+wh/2+.027);
+        if(st==='modern'&&floor>0){
+          detail(ww+.065,.022,.14,stone,x,y-wh/2-.025,.07);
+          detail(ww+.065,.012,.014,dark,x,y-wh/2+.075,.135);
+          for(let n=-2;n<=2;n++) detail(.008,.09,.009,dark,x+n*.039,y-wh/2+.025,.135);
+        }
+      }
+    }
+    if(st==='timber'||st==='rustic'){
+      for(const x of [-FP/2+.014,0,FP/2-.014]) detail(.027,h,.026,trim,x,h/2,.027);
+      for(let floor=0;floor<floors;floor++){
+        detail(FP,.028,.03,trim,0,step*floor+.075,.027);
+        if(st==='timber') for(const sign of [-1,1])
+          beam(f,sign*.04,step*floor+.09,.032,sign*.27,step*(floor+1)-.03,.032,.02,trim);
+      }
+    }
+    if(st==='stone') for(const x of [-FP/2+.023,FP/2-.023])
+      for(let y=.1;y<h;y+=.085) detail(.065,.053,.032,trim,x,y,.023);
+    if(st==='glass'||st==='plant') for(const x of [-.29,0,.29]) detail(.018,h,.026,trim,x,h/2,.026);
+    detail(FP+.055,.035,.06,trim,0,h-.015,.025);
+    if(side===0){
+      const dh=Math.min(.24,step*.78), industrial=type==='shop';
+      const dw=industrial?.22:.11;
+      detail(dw+.035,dh+.025,.04,trim,0,dh/2+.055,.038);
+      detail(dw,dh,.025,industrial?dark:wood,0,dh/2+.05,.065);
+      if(industrial) for(let y=.075;y<dh+.04;y+=.035) detail(dw,.008,.014,trim,0,y,.084);
+      else detail(.014,.018,.012,flower,dw*.3,dh*.5+.04,.085);
+      detail(dw+.07,.035,.12,stone,0,.027,.075);
+      detail(dw+.10,.018,.15,trim,0,dh+.095,.075);
+      if(industrial){
+        detail(.23,.065,.025,wood,0,dh+.17,.04);
+        for(let i=-1;i<=1;i++) detail(.04,.008,.008,flower,i*.063,dh+.17,.058);
+      }
+    }
+  }
+}
+function addRoofDetails(g,s,h,rH){
+  const trim=stdMat(s.trim), tile=stdMat(shadeHex(s.roof,16));
+  const flat=['modern','glass','plant','brick'].includes(s.style);
+  if(!flat){
+    const half=FP*1.18/2, depth=FP*1.18;
+    for(const sign of [-1,1]){
+      for(let row=1;row<=6;row++){
+        const u=row/7, x=sign*half*u, y=h+rH*(1-u)+.008;
+        box(g,.012,.012,depth,tile,x,y,0);
+        for(let col=0;col<6;col++){
+          const z=-depth/2+(col+.5+(row%2)*.25)*depth/6;
+          beam(g,x,y,z,x-sign*half/7,y+rH/7,z,.006,tile);
+        }
+      }
+      box(g,.025,.027,depth+.025,trim,sign*half,h,0);
+      for(const z of [-depth/2,depth/2]) beam(g,0,h+rH+.008,z,sign*half,h,z,.025,trim);
+    }
+    box(g,.04,.028,depth+.025,tile,0,h+rH+.012,0);
+    const chimney=stdMat('#957B68'), top=h+rH*.72+.16;
+    box(g,.09,.28,.085,chimney,.15,top-.14,-.12);
+    box(g,.12,.028,.115,trim,.15,top,-.12);
+    box(g,.062,.005,.057,stdMat('#302D2A'),.15,top+.016,-.12);
+    g.userData.chimney=[.15,top+.025,-.12];
+    // A small dormer breaks up the silhouette of the later pitched roofs.
+    if(s.style==='stone'){
+      box(g,.17,.13,.17,stdMat(s.wall),0,h+rH*.65,.16);
+      gableRoof(g,.21,.075,.20,s.roof,h+rH*.65+.065).position.z=.16;
+      box(g,.085,.075,.015,winMat('#819A9D'),0,h+rH*.65,.253);
+    }
+  }else{
+    const y=h+rH*(s.style==='brick'?1.6:1)+.025;
+    if(s.style!=='brick') for(const sign of [-1,1]){
+      box(g,FP*1.07,.055,.025,trim,0,y,sign*FP*.52);
+      box(g,.025,.055,FP*1.07,trim,sign*FP*.52,y,0);
+    }
+    const metal=stdMat('#7A8A8D',{metal:.45});
+    box(g,.15,.08,.13,metal,.17,y+.05,-.13);
+    for(let i=0;i<4;i++) box(g,.11,.006,.012,trim,.17,y+.094,-.17+i*.026);
+    if(s.style==='modern'||s.style==='glass'){
+      const solar=stdMat('#284D69',{metal:.35,rough:.3});
+      for(let i=0;i<2;i++){
+        box(g,.15,.016,.23,solar,-.14+i*.17,y+.075,.15,-.2);
+        for(let j=0;j<3;j++) box(g,.003,.018,.23,metal,-.20+i*.17+j*.06,y+.078,.15,-.2);
+      }
+    }
+  }
+}
+// Batch static details by material: even an ornate house only needs a handful
+// of draw calls. Tree crowns remain separate so their wind animation survives.
+function batchBuilding(g){
+  g.updateMatrixWorld(true);
+  const batches=new Map();
+  g.traverse(o=>{
+    if(!o.isMesh) return;
+    const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
+    geo.applyMatrix4(o.matrixWorld);
+    if(!batches.has(o.material)) batches.set(o.material,[]);
+    batches.get(o.material).push(geo);
+  });
+  const out=new THREE.Group(); out.userData={...g.userData};
+  for(const [mat,geos] of batches){
+    const merged=new THREE.BufferGeometry();
+    for(const name of ['position','normal','uv']){
+      const arrays=geos.map(geo=>geo.getAttribute(name));
+      const data=new Float32Array(arrays.reduce((n,a)=>n+a.array.length,0));
+      let offset=0; for(const a of arrays){data.set(a.array,offset);offset+=a.array.length;}
+      merged.setAttribute(name,new THREE.BufferAttribute(data,arrays[0].itemSize));
+    }
+    merged.computeBoundingSphere();
+    const mesh=new THREE.Mesh(merged,mat); mesh.castShadow=true; mesh.receiveShadow=true; out.add(mesh);
+    geos.forEach(geo=>geo.dispose());
+  }
+  g.traverse(o=>{if(o.geometry)o.geometry.dispose();});
+  return out;
+}
+
+/* ============================================================
+   6. GEBÄUDE-GEOMETRIE
+   Statt neun Zeichenroutinen für Canvas-Pfade gibt es hier eine Funktion je
+   Baugruppe, die eine THREE.Group aus Primitiven zusammensetzt. Geometrie und
+   Material werden je Typ+Stufe EINMAL gebaut (Cache) und danach nur noch
+   geklont — Three.js teilt Geometrie/Material zwischen Klonen automatisch,
+   das ersetzt den Sprite-Cache des Originals.
+============================================================ */
+const buildingTemplates = new Map();
+function getBuildingTemplate(type, level){
+  const k = type+'|'+level;
+  if (buildingTemplates.has(k)) return buildingTemplates.get(k);
+  const raw = buildBuildingGroup(type, level);
+  const g = TYPES[type].tree ? raw : batchBuilding(raw);
+  buildingTemplates.set(k, g);
+  return g;
+}
+
+function buildTreeGroup(type){
+  const t = TYPES[type], big = t.tree === 'big';
+  const g = new THREE.Group();
+  const th = t.trunkH*HS, tw = (big?0.09:0.06);
+  cyl(g, tw*0.6, tw, th, stdMat('#6E5238'), 0, th/2, 0, 7);
+  const crown = new THREE.Group(); crown.position.set(0, th, 0); crown.name = 'crown';
+  const leaf = stdMat(big ? '#4F7C46' : '#5F8C4E');
+  const blobs = big
+    ? [[0,.32,0,.30],[-.22,.12,.05,.22],[.22,.14,-.04,.20],[-.10,.42,-.08,.19],[.12,.40,.08,.18]]
+    : [[0,.18,0,.19],[-.14,.05,.03,.14],[.13,.06,-.03,.13],[-.03,.28,0,.13]];
+  for (const [x,y,z,r] of blobs) sphere(crown, r, leaf, x,y,z);
+  g.add(crown);
+  g.userData.chimney = null;
+  return g;
+}
+
+function buildWellGroup(){
+  const g = new THREE.Group();
+  cyl(g, 0.26,0.26,0.24, stdMat('#8E958E'), 0,0.12,0, 14);
+  cyl(g, 0.24,0.24,0.02, stdMat('#1C2B2E'), 0,0.235,0, 14);
+  box(g, 0.03,0.42,0.03, stdMat('#6B4E3C'), -0.19,0.33,0);
+  box(g, 0.03,0.42,0.03, stdMat('#6B4E3C'), 0.19,0.33,0);
+  box(g, 0.44,0.05,0.05, stdMat('#5A4030'), 0,0.54,0);
+  gableRoof(g, 0.5, 0.22, 0.34, '#7C5540', 0.56);
+  const stone=stdMat('#ADB0A1'), wood=stdMat('#6B4E3C');
+  // Individual coping stones leave the water surface visible in the centre.
+  for(let i=0;i<12;i++){
+    const a=i*Math.PI/6;
+    box(g,.12,.045,.065,stone,Math.sin(a)*.24,.26,Math.cos(a)*.24,0,a,0);
+  }
+  cyl(g,.20,.20,.008,stdMat('#4C929E',{metal:.35,rough:.2}),0,.24,0,24);
+  beam(g,-.21,.47,0,.21,.47,0,.035,wood);
+  beam(g,0,.47,0,0,.29,0,.008,stdMat('#B7A17B'));
+  cyl(g,.045,.035,.07,wood,.07,.30,0,10);
+  box(g,.018,.10,.018,wood,.23,.44,0);
+  box(g,.08,.018,.018,wood,.255,.39,0);
+  for(const x of [-.17,0,.17]) box(g,.008,.008,.35,wood,x,.56+.22*(1-Math.abs(x)/.25)+.006,0);
+
+  return g;
+}
+
+function buildArc(g,s,h,wallC,roofC,trimC){
+  const rTop = FP*0.31, rBot = FP*0.5;
+  cyl(g, rTop, rBot, h, stdMat(wallC), 0, h/2, 0, 16);
+  const wmat = winMat(wallC);
+  for (let f=1; f<=s.floors; f++){
+    const v = f/(s.floors+1), y = h*v, r = rBot+(rTop-rBot)*v;
+    for (let i=0;i<6;i++){
+      const a = i/6*Math.PI*2;
+      box(g, 0.11, 0.075, 0.02, wmat, Math.cos(a)*r*0.92, y, Math.sin(a)*r*0.92, 0, -a, 0);
+    }
+    if (f%3===0) torus(g, r*1.02, 0.018, stdMat('#5F8F62'), y);
+  }
+  torus(g, rTop*1.35, 0.014, stdMat(trimC,{emissive:trimC,emissiveIntensity:0.4}), h*0.78);
+  cyl(g, 0.01,0.015,0.4, stdMat('#333'), 0,h+0.2,0, 6);
+  sphere(g, 0.05, stdMat(trimC,{emissive:trimC,emissiveIntensity:0.6}), 0,h+0.44,0);
+  g.userData.chimney = null;
+}
+
+function buildFusion(g,s,h,wallC,roofC,trimC){
+  cyl(g, FP*0.5, FP*0.5, h, stdMat(wallC), 0, h/2, 0, 18);
+  const wmat = winMat(wallC);
+  for (let f=1; f<=s.floors; f++){
+    const y = h*f/(s.floors+1);
+    for (let i=0;i<8;i++){
+      const a = i/8*Math.PI*2;
+      box(g, 0.09,0.06,0.02, wmat, Math.cos(a)*FP*0.48, y, Math.sin(a)*FP*0.48, 0,-a,0);
+    }
+  }
+  sphere(g, FP*0.42, stdMat(roofC), 0, h, 0, Math.PI/2);
+  torus(g, FP*0.68, 0.02, stdMat(trimC,{emissive:trimC,emissiveIntensity:0.55}), h*0.55);
+  cyl(g, 0.05,0.075,0.55, stdMat('#8D98A2'), -FP*0.55,0.275,0.02, 8);
+  cyl(g, 0.045,0.065,0.46, stdMat('#8D98A2'), FP*0.52,0.23,-0.08, 8);
+  g.userData.chimney = null;
+}
+
+function buildBuildingGroup(type, level){
+  const t = TYPES[type];
+  const g = new THREE.Group();
+  if (t.tree) return buildTreeGroup(type);
+  if (type === 'well') return buildWellGroup();
+
+  const s = t.stages[level];
+  const st = s.style || 'stone';
+  const wallC = s.wall || t.wall, roofC = s.roof || t.roof, trimC = s.trim || t.beam || '#8a7f68';
+  const h = s.h*HS, rH = Math.max(0.05, s.roofH*HS);
+  const floors = s.floors || 1;
+
+  if (st === 'arc'){ buildArc(g,s,h,wallC,roofC,trimC); return g; }
+  if (st === 'fusion'){ buildFusion(g,s,h,wallC,roofC,trimC); return g; }
+
+  box(g, FP, h, FP, stdMat(wallC), 0, h/2, 0);
+  addFacadeDetails(g, s, type, h);
+  g.userData.chimney = [FP*0.18, h+rH*0.5+0.05, -FP*0.15];
+
+  if (st === 'modern' || st === 'glass'){
+    box(g, FP*1.05, rH, FP*1.05, stdMat(shadeHex(wallC,8)), 0, h+rH/2, 0);
+    const big = st === 'glass';
+    box(g, FP*(big?0.5:0.3), rH*(big?1.3:0.9), FP*(big?0.5:0.3),
+      stdMat(shadeHex(wallC,-10)), -FP*0.12, h+rH+rH*(big?0.65:0.45), 0);
+    g.userData.chimney = null;
+  } else if (st === 'brick'){
+    const roof = box(g, FP*1.04, rH*1.5, FP*0.98, stdMat(roofC), 0, h+rH*0.75, 0);
+    roof.rotation.x = -0.32;
+    cyl(g, 0.045,0.06,0.42, stdMat('#7E3E30'), FP*0.32, h+0.21, -FP*0.28, 8);
+    cyl(g,.056,.056,.035,stdMat(trimC),FP*.32,h+.42,-FP*.28,8);
+    g.userData.chimney=[FP*.32,h+.45,-FP*.28];
+  } else if (st === 'plant'){
+    box(g, FP*1.08, rH*0.7, FP*1.08, stdMat(roofC), 0, h+rH*0.35, 0);
+    cyl(g, 0.09,0.1,0.34, stdMat('#B4BAB6'), -FP*0.05, h+rH*0.7+0.17, -FP*0.18, 12);
+    box(g, 0.14,0.16,0.14, stdMat(wallC), FP*0.24, h+rH*0.7+0.08, FP*0.1);
+  } else {
+    gableRoof(g, FP*1.18, rH, FP*1.18, roofC, h);
+  }
+
+  addRoofDetails(g,s,h,rH);
+
+  if (s.clock){
+    const towerY=h+rH*.8;
+    box(g,.24,.28,.24,stdMat(wallC),0,towerY,0);
+    gableRoof(g,.30,.15,.30,roofC,towerY+.14);
+    for(const angle of [0,Math.PI/2]){
+      const f=facade(g,angle,.24);
+      const dial=cyl(f,.086,.086,.018,stdMat('#EEE1BC'),0,towerY,.016,24);
+      dial.rotation.x=Math.PI/2;
+      const ink=stdMat('#38434B');
+      for(let i=0;i<12;i++){
+        const a=i*Math.PI/6;
+        box(f,.008,.014,.01,ink,Math.sin(a)*.066,towerY+Math.cos(a)*.066,.03,0,0,-a);
+      }
+      beam(f,0,towerY,.037,0,towerY+.048,.037,.009,ink);
+      beam(f,0,towerY,.04,.036,towerY-.02,.04,.009,ink);
+    }
+    cyl(g, 0.012,0.012,0.55, stdMat('#93A4AF'), 0, h+rH+0.28, 0, 6);
+  }
+  return g;
+}
+
+/* ============================================================
+   7. SZENE: BODEN, STRASSEN, GEBÄUDE-INSTANZEN
+============================================================ */
+let groundInst = null, groundIndex = new Map();
+const roadGroup = new THREE.Group(); scene.add(roadGroup);
+const offerGroup = new THREE.Group(); scene.add(offerGroup);
+const renderedTiles = new Map();     // key -> { group, type, level, halo, labelEl }
+const labelsEl = document.getElementById('labels');
+
+function buildGroundMeshes(){
+  if (groundInst){ scene.remove(groundInst); groundInst.geometry.dispose(); groundInst.material.dispose(); }
+  const n = Math.max(1, state.cells.length);
+  const geo = new THREE.BoxGeometry(0.96,0.06,0.96);
+  const mat = new THREE.MeshStandardMaterial({ roughness:1 });
+  groundInst = new THREE.InstancedMesh(geo, mat, n);
+  groundInst.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n*3), 3);
+  groundInst.receiveShadow = true;
+  const m = new THREE.Matrix4();
+  groundIndex = new Map();
+  state.cells.forEach(([gx,gy],i) => {
+    m.makeTranslation(gx,-0.03,gy);
+    groundInst.setMatrixAt(i,m);
+    groundIndex.set(key(gx,gy), i);
+  });
+  groundInst.count = state.cells.length;
+  scene.add(groundInst);
+  groundDirty = false;
+  updateGroundColors();
+}
+const tileColor = new THREE.Color();
+function auraOf(gx,gy){
+  let a = 0;
+  for (const [dx,dy] of N4){ const nb = at(gx+dx,gy+dy); if (nb && TYPES[nb.type].aura) a += TYPES[nb.type].aura; }
+  return a;
+}
+function updateGroundColors(){
+  if (!groundInst) return;
+  const rampLit  = ['#3D5C4E','#47603F','#4F6A3C','#5C7539','#6A8036'];
+  const rampDark = ['#375547','#415A3A','#496437','#556E34','#637931'];
+  state.cells.forEach(([gx,gy]) => {
+    const i = groundIndex.get(key(gx,gy)); if (i==null) return;
+    const b = at(gx,gy);
+    const lit = (gx+gy)%2===0;
+    let hex = lit ? rampLit[0] : rampDark[0];
+    if (!b || !TYPES[b.type].aura){
+      const aura = auraOf(gx,gy);
+      if (aura>0){ const idx = Math.min(4, 1+Math.floor(aura/0.6)); hex = (lit?rampLit:rampDark)[idx] || rampLit[4]; }
+    }
+    if (state.hover && state.hover.x===gx && state.hover.y===gy) hex = '#F2B035';
+    tileColor.set(hex);
+    groundInst.setColorAt(i, tileColor);
+  });
+  groundInst.instanceColor.needsUpdate = true;
+}
+
+function disposeGroup(g){
+  g.traverse(o => { if (o.geometry) o.geometry.dispose && o.geometry.dispose(); });
+}
+
+function rebuildRoads(){
+  while (roadGroup.children.length) roadGroup.remove(roadGroup.children[0]);
+  const padMat = new THREE.MeshStandardMaterial({ color:0x6E6555, roughness:1 });
+  const deadMat = new THREE.MeshStandardMaterial({ color:0x3C453D, roughness:1 });
+  for (const [gx,gy] of state.cells){
+    const b = at(gx,gy); if (!b || b.type !== 'road') continue;
+    const live = state.net.has(key(gx,gy));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.62,0.03,0.62), live?padMat:deadMat);
+    m.position.set(gx,0.005,gy); m.receiveShadow = true;
+    roadGroup.add(m);
+    for (const [dx,dy] of N4){
+      const n = at(gx+dx,gy+dy);
+      if (!n || (n.type!=='road' && n.type!=='hall')) continue;
+      const link = new THREE.Mesh(new THREE.BoxGeometry(dx?0.42:0.2, 0.03, dy?0.42:0.2), live?padMat:deadMat);
+      link.position.set(gx+dx*0.31, 0.005, gy+dy*0.31); link.receiveShadow = true;
+      roadGroup.add(link);
+    }
+    if (live){
+      const lamp = (Math.random() < 0) ? 0 : ((gx*31+gy*17)%4===0 ? 1 : 0);
+      if (lamp){
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.3,6),
+          new THREE.MeshStandardMaterial({ color:0x2A3338 }));
+        post.position.set(gx-0.22,0.15,gy-0.02); roadGroup.add(post);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.03,8,8),
+          new THREE.MeshStandardMaterial({ color:0xFFD98F, emissive:0xFFD98F, emissiveIntensity: 0.2+0.8*nightF }));
+        bulb.position.set(gx-0.22,0.31,gy-0.02); glowMaterials.push(bulb.material); roadGroup.add(bulb);
+      }
+    } else {
+      const warn = new THREE.Mesh(new THREE.RingGeometry(0.28,0.31,4),
+        new THREE.MeshBasicMaterial({ color:0xC46A5C, side:THREE.DoubleSide }));
+      warn.rotation.x = -Math.PI/2; warn.rotation.z = Math.PI/4; warn.position.set(gx,0.02,gy);
+      roadGroup.add(warn);
+    }
+  }
+}
+
+function rebuildOffers(){
+  while (offerGroup.children.length) offerGroup.remove(offerGroup.children[0]);
+  const list = offers(); if (!list.length) return;
+  const price = plotPrice(), ready = state.free === 0, can = ready && state.coins >= price;
+  for (const o of list){
+    const cx = o.sx*P + (P-1)/2, cz = o.sy*P + (P-1)/2;
+    const geo = new THREE.EdgesGeometry(new THREE.BoxGeometry(P-0.3,0.02,P-0.3));
+    const mat = new THREE.LineBasicMaterial({ color: can ? 0xF2B035 : 0x8CA0A8, transparent:true, opacity:can?0.85:0.4 });
+    const line = new THREE.LineSegments(geo, mat);
+    line.position.set(cx,0.05,cz);
+    offerGroup.add(line);
+    const el = getOfferLabel(o.k);
+    el.textContent = price.toLocaleString('de-DE');
+    el.dataset.wx = cx; el.dataset.wz = cz;
+  }
+  for (const [k,el] of offerLabels){ if (!list.some(o=>o.k===k)){ el.remove(); offerLabels.delete(k); } }
+}
+const offerLabels = new Map();
+function getOfferLabel(k){
+  if (offerLabels.has(k)) return offerLabels.get(k);
+  const el = document.createElement('div');
+  el.className = 'lbl-float'; el.style.color = '#F2B035'; el.style.fontSize = '13px';
+  labelsEl.appendChild(el); offerLabels.set(k, el); return el;
+}
+
+function makeHalo(){
+  const tex = haloTexture();
+  const mat = new THREE.SpriteMaterial({ map:tex, color:0xF2B035, transparent:true, depthWrite:false, opacity:0 });
+  const s = new THREE.Sprite(mat); s.scale.set(0.9,0.9,1);
+  return s;
+}
+let _haloTex = null;
+function haloTexture(){
+  if (_haloTex) return _haloTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0,0,64,64);
+  _haloTex = new THREE.CanvasTexture(c);
+  return _haloTex;
+}
+
+function ensureLabel(k){
+  let e = renderedTiles.get(k);
+  if (e.labelEl) return e.labelEl;
+  const wrap = document.createElement('div'); wrap.className = 'lbl-wrap';
+  const bar = document.createElement('div'); bar.className = 'lbl-bar';
+  const fill = document.createElement('i'); bar.appendChild(fill);
+  const flag = document.createElement('div'); flag.className = 'lbl-flag'; flag.hidden = true;
+  wrap.appendChild(bar); wrap.appendChild(flag);
+  labelsEl.appendChild(wrap);
+  e.labelEl = { wrap, fill, flag };
+  return e.labelEl;
+}
+
+function syncScene(){
+  if (groundDirty) buildGroundMeshes(); else updateGroundColors();
+  rebuildRoads();
+  rebuildOffers();
+
+  const seen = new Set();
+  for (const b of state.tiles.values()){
+    if (b.type === 'road') continue;
+    const k = key(b.x,b.y); seen.add(k);
+    let e = renderedTiles.get(k);
+    if (!e || e.type !== b.type || e.level !== b.level){
+      if (e){ scene.remove(e.group); if (e.labelEl) e.labelEl.wrap.remove(); }
+      const tmpl = getBuildingTemplate(b.type, b.level);
+      const group = tmpl.clone(true);
+      group.position.set(b.x, 0, b.y);
+      const halo = makeHalo(); halo.position.y = (stageOf(b).h*HS + stageOf(b).roofH*HS) + 0.5;
+      group.add(halo);
+      scene.add(group);
+      e = { group, type:b.type, level:b.level, halo, labelEl:null };
+      renderedTiles.set(k, e);
+    }
+  }
+  for (const [k,e] of [...renderedTiles]){
+    if (!seen.has(k)){
+      scene.remove(e.group);
+      if (e.labelEl) e.labelEl.wrap.remove();
+      renderedTiles.delete(k);
+    }
+  }
+}
+
+/* ============================================================
+   8. WOLKEN, STERNE, TAG/NACHT
+============================================================ */
+function updateCelestial(dayRaw){
+  const cx = cam.x, cz = cam.z, R = 30;
+  const sp = (dayRaw-0.25)/0.5, sAng = sp*Math.PI;
+  const sY = Math.sin(sAng), sX = -Math.cos(sAng);
+  sunMesh.position.set(cx+sX*R, Math.max(sY,-0.3)*R*0.55+3, cz+3);
+  sunMesh.visible = sY > -0.3;
+  sun.position.copy(sunMesh.position);
+  sun.target.position.set(cx,0,cz); sun.target.updateMatrixWorld();
+  sun.intensity = 0.12 + Math.max(0,sY)*1.15;
+  sun.color.setHSL(0.11 - Math.max(0,sY)*0.02, 0.55, 0.55+Math.max(0,sY)*0.3);
+
+  const mp = (((dayRaw+0.5)%1)-0.25)/0.5, mAng = mp*Math.PI;
+  const mY = Math.sin(mAng), mX = -Math.cos(mAng);
+  moonMesh.position.set(cx+mX*R, Math.max(mY,-0.3)*R*0.55+3, cz-3);
+  moonMesh.visible = mY > -0.25 && nightF > 0.02;
+  moonLight.position.copy(moonMesh.position);
+  moonLight.intensity = moonMesh.visible ? nightF*0.5 : 0;
+
+  hemi.intensity = 0.38 + dayS*0.45;
+  hemi.color.set(mixColor('#0b1420','#bfe0f2', dayS));
+  hemi.groundColor.set(mixColor('#0c130c','#3a4a2c', dayS));
+
+  const sky = mixColor('#0A141B', '#8fb9c9', dayS);
+  scene.background = new THREE.Color(sky);
+  if (!scene.fog) scene.fog = new THREE.Fog(sky, 30, 95);
+  scene.fog.color.set(sky);
+
+  starMat.opacity = Math.pow(nightF,1.3)*0.9;
+}
+function mixColor(a,b,t){
+  const ca = new THREE.Color(a), cb = new THREE.Color(b);
+  return ca.lerp(cb,t);
+}
+function updateClouds(dt){
+  const b = worldBounds();
+  for (const c of clouds){
+    if (!c.mesh){
+      const tex = cloudTexture();
+      const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, opacity:0.5, depthWrite:false, fog:false });
+      c.mesh = new THREE.Sprite(mat); c.mesh.scale.set(c.r*3, c.r*1.7, 1);
+      scene.add(c.mesh);
+    }
+    if (!reduceMotion) c.off += c.sp*dt;
+    const span = (b.x1-b.x0)+18;
+    const x = b.x0-9 + (((c.off)%span)+span)%span;
+    c.mesh.position.set(x, 9+c.fy, (b.z0+b.z1)/2);
+  }
+}
+let _cloudTex = null;
+function cloudTexture(){
+  if (_cloudTex) return _cloudTex;
+  const c = document.createElement('canvas'); c.width=c.height=128;
+  const g = c.getContext('2d');
+  for (let i=0;i<6;i++){
+    const x=20+Math.random()*88, y=40+Math.random()*48, r=18+Math.random()*22;
+    const gr = g.createRadialGradient(x,y,0,x,y,r);
+    gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+  }
+  _cloudTex = new THREE.CanvasTexture(c);
+  return _cloudTex;
+}
+
+/* ============================================================
+   9. LEBEN IN DER STADT: PASSANTEN, VÖGEL, RAUCH, EFFEKTE
+============================================================ */
+function netNeighbors(x,y){
+  const out = [];
+  for (const [dx,dy] of N4) if (state.net.has(key(x+dx,y+dy))) out.push([x+dx,y+dy]);
+  return out;
+}
+function walkerMesh(col){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.045,0.13,3,6), stdMat(col));
+  body.position.y = 0.14; body.castShadow = true; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.045,8,8), stdMat('#E5C6A3'));
+  head.position.y = 0.26; g.add(head);
+  return g;
+}
+function reseedWalkers(){
+  walkerNetSize = state.net.size;
+  for (const w of walkers) if (w.mesh) scene.remove(w.mesh);
+  walkers = [];
+  if (reduceMotion || !state.net.size) return;
+  const starts = [...state.net];
+  const n = Math.max(2, Math.min(14, Math.floor(state.net.size/3)));
+  const cols = ['#CBD8DC','#C46A5C','#8FA6B8','#B89F6A','#7E8E96','#A67B5B'];
+  for (let i=0;i<n;i++){
+    const [sx,sy] = starts[(Math.random()*starts.length)|0].split(',').map(Number);
+    const nb = netNeighbors(sx,sy); if (!nb.length) continue;
+    const nxt = nb[(Math.random()*nb.length)|0];
+    const mesh = walkerMesh(cols[i%cols.length]);
+    scene.add(mesh);
+    walkers.push({ fx:sx,fy:sy,tx:nxt[0],ty:nxt[1],px:sx,py:sy, t:Math.random(),
+      spd:.4+Math.random()*.3, mesh });
+  }
+}
+function stepWalkers(dt){
+  if (state.net.size !== walkerNetSize) reseedWalkers();
+  for (const w of walkers){
+    w.t += w.spd*dt;
+    while (w.t >= 1){
+      w.t -= 1;
+      const nb = netNeighbors(w.tx,w.ty);
+      let opts = nb.filter(([x,y]) => !(x===w.px && y===w.py));
+      if (!opts.length) opts = nb;
+      if (!opts.length){ w.t = 0; break; }
+      const nxt = opts[(Math.random()*opts.length)|0];
+      w.px=w.tx; w.py=w.ty; w.fx=w.tx; w.fy=w.ty; w.tx=nxt[0]; w.ty=nxt[1];
+    }
+    const x = w.fx+(w.tx-w.fx)*w.t, z = w.fy+(w.ty-w.fy)*w.t;
+    w.mesh.position.set(x,0,z);
+    const ang = Math.atan2(w.tx-w.fx, w.ty-w.fy);
+    w.mesh.rotation.y = ang;
+    w.mesh.position.y = 0.02+Math.abs(Math.sin(w.t*Math.PI*6))*0.01;
+  }
+}
+function birdMesh(){
+  const tex = birdTexture();
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, fog:false }));
+  s.scale.set(0.5,0.3,1);
+  return s;
+}
+let _birdTex = null;
+function birdTexture(){
+  if (_birdTex) return _birdTex;
+  const c = document.createElement('canvas'); c.width=32; c.height=16;
+  const g = c.getContext('2d'); g.strokeStyle='rgba(206,218,222,.9)'; g.lineWidth=2; g.lineCap='round';
+  g.beginPath(); g.moveTo(2,8); g.quadraticCurveTo(11,1,16,8); g.quadraticCurveTo(21,1,30,8); g.stroke();
+  _birdTex = new THREE.CanvasTexture(c);
+  return _birdTex;
+}
+function stepBirds(dt){
+  const t = now();
+  if (!reduceMotion && !birds.length && t > nextFlock){
+    const b = worldBounds(), dir = Math.random()<.5?1:-1, n = 3+((Math.random()*3)|0);
+    const mem = [];
+    for (let i=0;i<n;i++) mem.push({ dx:-dir*(i*0.35+Math.random()*.2), dz:(Math.random()-.5)*.7, mesh:birdMesh() });
+    for (const m of mem) scene.add(m.mesh);
+    birds.push({ x: dir>0? b.x0-6 : b.x1+6, z:(b.z0+b.z1)/2+(Math.random()-.5)*4, y:6+Math.random()*2,
+      vx: dir*(0.55+Math.random()*.3), mem });
+    nextFlock = t+16000+Math.random()*20000;
+  }
+  for (const f of birds){
+    f.x += f.vx*dt;
+    for (const m of f.mem){
+      m.mesh.position.set(f.x+m.dx, f.y+Math.sin(now()/700+m.dx*5)*0.3, f.z+m.dz);
+      m.mesh.material.rotation = Math.sin(now()/95+m.dx*5)*0.3;
+    }
+  }
+  const b = worldBounds();
+  birds = birds.filter(f => {
+    const alive = f.x > b.x0-14 && f.x < b.x1+14;
+    if (!alive) for (const m of f.mem) scene.remove(m.mesh);
+    return alive;
+  });
+}
+function smokeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:haloTexture(), color:0xC4CEC8,
+    transparent:true, opacity:.35, depthWrite:false }));
+  s.scale.set(.16,.16,1);
+  return s;
+}
+let smoke = [];
+function spawnSmoke(pos){
+  if (reduceMotion) return;
+  const s = smokeSprite(); s.position.copy(pos);
+  scene.add(s); smoke.push({ mesh:s, t:now() });
+}
+function stepSmoke(){
+  const t = now();
+  smoke = smoke.filter(p => {
+    const k = (t-p.t)/2200;
+    if (k >= 1){ scene.remove(p.mesh); return false; }
+    p.mesh.position.y += 0.0025;
+    p.mesh.material.opacity = (1-k)*0.35;
+    p.mesh.scale.setScalar(0.16+k*0.22);
+    return true;
+  });
+}
+function stepPuffsAndFloats(){
+  const t = now();
+  state.puffs = state.puffs.filter(p => t-p.t < 620);
+  state.floats = state.floats.filter(f => t-f.t < 1150);
+}
+
+/* ============================================================
+   10. OVERLAY-LABEL (Status/Balken/Zahlen) — HTML statt Canvas-Text,
+   projiziert jeden Frame über camera.project(). Pragmatischer als eigene
+   Sprite-Texturen für Text, und crisp bei jedem Zoom.
+============================================================ */
+function project(x,y,z){
+  const v = new THREE.Vector3(x,y,z).project(camera);
+  return { x:(v.x*0.5+0.5)*W, y:(1-(v.y*0.5+0.5))*H, vis: v.z < 1 };
+}
+function updateLabels(){
+  for (const [k,e] of renderedTiles){
+    const b = at(...k.split(',').map(Number));
+    if (!b){ continue; }
+    const s = stageOf(b);
+    const cut = !b.active;
+    const ready = isReady(b);
+    e.halo.material.opacity = ready ? (reduceMotion?0.8:0.5+0.5*Math.sin(now()/380))*0.9 : 0;
+
+    const topY = s.h*HS + s.roofH*HS + 0.62;
+    const p = project(b.x, topY, b.y);
+    const lbl = ensureLabel(k);
+    if (!p.vis || (!cut && !(s.time>0 && !ready))){
+      lbl.wrap.hidden = true;
+    } else {
+      lbl.wrap.hidden = false;
+      lbl.wrap.style.left = p.x+'px'; lbl.wrap.style.top = p.y+'px';
+      if (cut){
+        lbl.fill.parentElement.hidden = true;
+        lbl.flag.hidden = false;
+        lbl.flag.className = 'lbl-flag ' + (!b.conn ? 'road' : 'pop');
+      } else {
+        lbl.flag.hidden = true;
+        lbl.fill.parentElement.hidden = false;
+        lbl.fill.style.width = (progress(b)*100)+'%';
+      }
+    }
+    if (b.type !== 'road' && !cut && !ready && s.time > 0 && e.group.userData.chimney){
+      if (Math.random() < 0.02){
+        const c = e.group.userData.chimney;
+        spawnSmoke(new THREE.Vector3(b.x+c[0], c[1], b.y+c[2]));
+      }
+    }
+    if (TYPES[b.type].tree){
+      const crown = e.group.getObjectByName('crown');
+      if (crown){
+        const sway = TYPES[b.type].sway||0;
+        crown.rotation.z = wind ? Math.sin(windT + b.x*1.7+b.y*0.9)*sway*wind*8 : 0;
+        crown.rotation.x = wind ? Math.sin(windT*1.3 + b.x*0.6)*sway*wind*4 : 0;
+      }
+    }
+  }
+  for (const [k,el] of offerLabels){
+    const p = project(Number(el.dataset.wx), 0.15, Number(el.dataset.wz));
+    el.style.left = p.x+'px'; el.style.top = p.y+'px'; el.hidden = !p.vis;
+  }
+  renderFloatsAndPuffs();
+}
+const floatEls = [], puffEls = [];
+function renderFloatsAndPuffs(){
+  while (floatEls.length < state.floats.length){ const d=document.createElement('div'); d.className='lbl-float'; labelsEl.appendChild(d); floatEls.push(d); }
+  state.floats.forEach((f,i) => {
+    const k = (now()-f.t)/1150, p = project(f.x, f.y+k*0.9, f.z);
+    const d = floatEls[i]; d.hidden = !p.vis;
+    d.style.left = p.x+'px'; d.style.top = p.y+'px'; d.textContent = f.text;
+    d.style.opacity = String(1-k*k);
+  });
+  for (let i=state.floats.length;i<floatEls.length;i++) floatEls[i].hidden = true;
+
+  while (puffEls.length < state.puffs.length){ const d=document.createElement('div'); d.className='lbl-puff'; labelsEl.appendChild(d); puffEls.push(d); }
+  state.puffs.forEach((pu,i) => {
+    const k = (now()-pu.t)/620, p = project(pu.x, pu.y+k*0.3, pu.z);
+    const d = puffEls[i]; d.hidden = !p.vis;
+    const px = (pu.r*(1+k*1.6))*40;
+    d.style.width = px+'px'; d.style.height = px+'px';
+    d.style.left = p.x+'px'; d.style.top = p.y+'px';
+    d.style.opacity = String((1-k)*0.4);
+  });
+  for (let i=state.puffs.length;i<puffEls.length;i++) puffEls[i].hidden = true;
+}
+
+/* ============================================================
+   11. HAUPTSCHLEIFE
+============================================================ */
+let lastFrame = now();
+function frame(){
+  const tNow = now();
+  let dt = (tNow-lastFrame)/1000; lastFrame = tNow;
+  if (dt > .05) dt = .05; if (dt < 0) dt = 0;
+
+  windT = tNow/1500;
+  wind = reduceMotion ? 0 : (0.62 + 0.38*Math.sin(tNow/4300)) * 0.05;
+
+  const dayRaw = reduceMotion ? 0.55 : ((tNow/DAY_CYCLE)+dayOffset)%1;
+  dayF = 0.5-0.5*Math.cos(dayRaw*Math.PI*2);
+  dayS = dayF*dayF*(3-2*dayF);
+  nightF = 1-dayS;
+
+  updateCelestial(dayRaw);
+  updateClouds(dt);
+  stepWalkers(dt);
+  stepBirds(dt);
+  stepSmoke();
+  stepPuffsAndFloats();
+
+  for (const m of glowMaterials) m.emissiveIntensity = nightF*0.9;
+
+  updateLabels();
+  renderer.render(scene, camera);
+
+  if (helpCards.length && !helpEl.hidden) paintHelpCards();
+
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   12. EINGABE — dieselbe Gestenlogik wie im Original, nur die
+   Pixel-zu-Kachel-Umrechnung läuft jetzt über Raycasting statt
+   manueller Bildschirmmathematik.
+============================================================ */
+const pointers = new Map();
+let gesture = null, holdTimer = null;
+const TAP_SLOP = 8;
+const HOLD_MS = 380;
+
+function cancelHold(){ clearTimeout(holdTimer); holdTimer = null; }
+function startCarry(gs){
+  if (!gs || gs.mode !== 'tap' || !gs.holdAt) return;
+  const b = at(gs.holdAt.x, gs.holdAt.y);
+  if (!b || TYPES[b.type].fixed) return;
+  gs.mode = 'carry';
+  state.moving = { x:b.x, y:b.y };
+  state.hover  = { x:b.x, y:b.y };
+  try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12); } catch (e){}
+  flash(stageOf(b).name + ' aufgenommen — auf ein freies Feld ziehen.');
+}
+function localXY(ev){
+  const r = cv.getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+function toGrid(ev){
+  const l = localXY(ev);
+  const g = toTile(l.x, l.y);
+  if (!unlocked(g.x,g.y)) return null;
+  return g;
+}
+const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+function buyPlot(k){
+  const price = plotPrice();
+  if (state.free > 0) return flash('Erst alles bebauen — noch ' + state.free + ' freie Felder.');
+  if (state.coins < price) return flash('Bauabschnitt kostet ' + price.toLocaleString('de-DE') + ' Münzen.');
+  state.coins -= price;
+  state.plots.add(k);
+  rebuildWorld();
+  const [sx,sy] = k.split(',').map(Number);
+  for (let i=0;i<P;i++) puff(sx*P+i, sy*P+(i%2?0:P-1));
+  flash('Bauabschnitt gekauft — ' + (P*P) + ' neue Felder.');
+  refresh();
+}
+function tap(ev){
+  const l = localXY(ev);
+  const raw = toTile(l.x, l.y);
+  if (!unlocked(raw.x, raw.y)){
+    const k = plotKey(raw.x, raw.y);
+    if (offers().some(o => o.k === k)) buyPlot(k);
+    return;
+  }
+  const g = raw, b = at(g.x,g.y);
+  if (state.moving){ moveTo(g.x, g.y); return; }
+  if (state.tool==='harvest'){
+    if (!b) return flash('Leeres Feld — hier gibt es nichts zu ernten.');
+    if (isReady(b)) return collect(b);
+    if (!b.conn) return flash(stageOf(b).name + ' hat keinen Weg zum Rathaus.');
+    if (!b.staffed) return flash(stageOf(b).name + ' steht still: ' +
+      stageOf(b).staff + ' Einwohner nötig, ' + freePop() + ' frei.');
+    return flash(stageOf(b).time ? stageOf(b).name + ' produziert noch.'
+      : TYPES[b.type].aura
+        ? TYPES[b.type].label + ' verstärkt nur die Nachbarn — nichts zu ernten.'
+        : stageOf(b).name + ' wirft nichts ab.');
+  }
+  if (state.tool==='move'){ if (b) pickUp(b); else flash('Hier steht nichts zum Verschieben.'); return; }
+  if (state.tool==='raze'){ b ? demolish(b) : flash('Hier steht nichts.'); return; }
+  if (state.tool==='lift'){ b ? upgrade(b) : flash('Erst bauen, dann ausbauen.'); return; }
+  if (b){
+    if (isReady(b)) collect(b);
+    else if (!b.conn) flash(stageOf(b).name + ' hat keinen Weg zum Rathaus.');
+    else if (!b.staffed) flash(stageOf(b).name + ' steht still: ' +
+      stageOf(b).staff + ' Einwohner nötig, ' + freePop() + ' frei.');
+    else if (stageOf(b).time===0) flash(TYPES[b.type].aura
+      ? TYPES[b.type].label + ': +' + Math.round(TYPES[b.type].aura*100) + ' % Ertrag auf die vier Nachbarfelder.'
+      : 'Straße.');
+    else flash(stageOf(b).name + ' produziert noch.');
+    return;
+  }
+  build(g.x,g.y,state.tool);
+}
+
+cv.addEventListener('pointerdown', ev => {
+  cv.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId, { x:ev.clientX, y:ev.clientY });
+  state.hover = toGrid(ev);
+
+  if (pointers.size === 2){
+    cancelHold();
+    const [a,b] = [...pointers.values()];
+    gesture = { mode:'pinch', d:dist(a,b), mx:(a.x+b.x)/2, my:(a.y+b.y)/2 };
+    return;
+  }
+  if (pointers.size > 2) return;
+
+  if (ev.button === 1 || ev.shiftKey){
+    gesture = { mode:'pan', lx:ev.clientX, ly:ev.clientY };
+    return;
+  }
+  const g = toGrid(ev);
+  if (state.tool === 'road' && g && !at(g.x,g.y)){
+    gesture = { mode:'paint' };
+    build(g.x, g.y, 'road');
+    return;
+  }
+  gesture = { mode:'tap', sx:ev.clientX, sy:ev.clientY };
+  const held = g && at(g.x, g.y);
+  if (held && !TYPES[held.type].fixed && state.tool !== 'raze' && !state.moving){
+    gesture.holdAt = { x:g.x, y:g.y };
+    const gs = gesture;
+    holdTimer = setTimeout(() => startCarry(gs), HOLD_MS);
+  }
+});
+cv.addEventListener('pointermove', ev => {
+  const p = pointers.get(ev.pointerId);
+  if (p){ p.x = ev.clientX; p.y = ev.clientY; }
+  if (ev.pointerType === 'mouse' && (!gesture || gesture.mode === 'tap')) state.hover = toGrid(ev);
+  if (gesture && gesture.mode === 'carry') state.hover = toGrid(ev);
+  if (!gesture) return;
+
+  if (gesture.mode === 'pinch'){
+    if (pointers.size < 2) return;
+    const [a,b] = [...pointers.values()];
+    const d = dist(a,b), mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    const r = cv.getBoundingClientRect();
+    panByScreenDelta(mx-gesture.mx, my-gesture.my);
+    if (gesture.d > 0) zoomAt(mx - r.left, my - r.top, d/gesture.d);
+    gesture.d = d; gesture.mx = mx; gesture.my = my;
+    return;
+  }
+  if (gesture.mode === 'paint'){
+    const g = toGrid(ev);
+    if (g && !at(g.x,g.y)) build(g.x, g.y, 'road');
+    return;
+  }
+  if (gesture.mode === 'carry') return;
+  if (gesture.mode === 'tap'){
+    if (Math.hypot(ev.clientX-gesture.sx, ev.clientY-gesture.sy) < TAP_SLOP) return;
+    cancelHold();
+    gesture = { mode:'pan', lx:gesture.sx, ly:gesture.sy };
+    state.hover = null;
+  }
+  if (gesture.mode === 'pan'){
+    const l0 = { x:gesture.lx, y:gesture.ly }, l1 = { x:ev.clientX, y:ev.clientY };
+    const r = cv.getBoundingClientRect();
+    const a = raycastGround(l0.x-r.left, l0.y-r.top), b = raycastGround(l1.x-r.left, l1.y-r.top);
+    cam.x -= (b.x-a.x); cam.z -= (b.z-a.z);
+    updateCameraPosition(); clampCam();
+    gesture.lx = ev.clientX; gesture.ly = ev.clientY;
+  }
+});
+function endPointer(ev){
+  const had = gesture;
+  cancelHold();
+  pointers.delete(ev.pointerId);
+  if (had && had.mode === 'carry'){
+    const g = toGrid(ev);
+    if (g && state.moving && (g.x !== state.moving.x || g.y !== state.moving.y)) moveTo(g.x, g.y);
+    else flash('In der Hand — Zielfeld antippen, Escape legt ab.');
+    gesture = null;
+    if (ev.pointerType !== 'mouse') state.hover = null;
+    return;
+  }
+  if (had && had.mode === 'tap') tap(ev);
+  if (pointers.size === 0){ gesture = null; if (ev.pointerType !== 'mouse') state.hover = null; }
+  else if (had && had.mode === 'pinch' && pointers.size === 1){
+    const [a] = [...pointers.values()];
+    gesture = { mode:'pan', lx:a.x, ly:a.y };
+  }
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse' && !gesture) state.hover = null; });
+
+cv.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const l = localXY(ev);
+  const step = ev.deltaMode === 1 ? ev.deltaY*16 : ev.deltaY;
+  zoomAt(l.x, l.y, Math.max(0.8, Math.min(1.25, Math.exp(-step*0.0018))));
+}, { passive:false });
+
+addEventListener('keydown', ev => {
+  if (ev.target !== document.body) return;
+  const pan = 60;
+  if (ev.key === '+' || ev.key === '=') zoomAt(W/2, H/2, 1.25);
+  else if (ev.key === '-' || ev.key === '_') zoomAt(W/2, H/2, 0.8);
+  else if (ev.key === '0') resetView();
+  else if (ev.key === '?' || ev.key === 'h') toggleHelp(helpEl.hidden);
+  else if (ev.key === 'Escape'){
+    if (!helpEl.hidden) toggleHelp(false);
+    else if (state.moving){ state.moving = null; flash('Verschieben abgebrochen.'); }
+    else return;
+  }
+  else if (ev.key === 'ArrowLeft')  panByScreenDelta(-pan,0);
+  else if (ev.key === 'ArrowRight') panByScreenDelta(pan,0);
+  else if (ev.key === 'ArrowUp')    panByScreenDelta(0,-pan);
+  else if (ev.key === 'ArrowDown')  panByScreenDelta(0,pan);
+  else return;
+  ev.preventDefault();
+});
+
+/* ============================================================
+   SPEICHERN — unverändert gegenüber dem Original (reiner Zustand).
+============================================================ */
+const SAVE_KEY = 'iso-stadt-threejs-v1';
+const Store = {
+  mode: 'kein',
+  async init(){
+    try {
+      if (typeof window !== 'undefined' && window.storage &&
+          typeof window.storage.get === 'function'){ this.mode = 'artefakt'; return; }
+    } catch (e){}
+    try {
+      const t = '__probe__';
+      window.localStorage.setItem(t,'1'); window.localStorage.removeItem(t);
+      this.mode = 'browser';
+    } catch (e){ this.mode = 'kein'; }
+  },
+  async read(){
+    try {
+      if (this.mode === 'artefakt'){ const r = await window.storage.get(SAVE_KEY); return r ? r.value : null; }
+      if (this.mode === 'browser') return window.localStorage.getItem(SAVE_KEY);
+    } catch (e){}
+    return null;
+  },
+  async write(str){
+    try {
+      if (this.mode === 'artefakt'){ await window.storage.set(SAVE_KEY, str); return true; }
+      if (this.mode === 'browser'){ window.localStorage.setItem(SAVE_KEY, str); return true; }
+    } catch (e){}
+    return false;
+  },
+  async wipe(){
+    try {
+      if (this.mode === 'artefakt') await window.storage.delete(SAVE_KEY);
+      if (this.mode === 'browser') window.localStorage.removeItem(SAVE_KEY);
+    } catch (e){}
+  }
+};
+function serialize(){
+  const t = now();
+  return JSON.stringify({
+    v: 1, c: state.coins, p: [...state.plots],
+    t: [...state.tiles.values()].map(b => [
+      b.x, b.y, b.type, b.level,
+      Math.max(0, Math.round((b.paused != null ? b.paused : b.done - t))),
+      b.paused != null ? 1 : 0, b.invested || 0
+    ])
+  });
+}
+function deserialize(str){
+  const d = JSON.parse(str);
+  if (!d || d.v !== 1 || !Array.isArray(d.t) || !Array.isArray(d.p))
+    throw new Error('Das ist kein Spielstand dieser Fassung.');
+  const t = now();
+  const plots = new Set(d.p.filter(k => /^-?\d+,-?\d+$/.test(k)));
+  if (!plots.size) throw new Error('Der Spielstand enthält keine Bauabschnitte.');
+  state.coins = Math.max(0, Number(d.c) || 0);
+  state.plots = plots;
+  state.moving = null;
+  state.tiles = new Map();
+  rebuildWorld();
+  d.t.forEach(([x, y, type, level, rest, isPaused, invested], i) => {
+    const T = TYPES[type];
+    if (!T || !T.stages[level] || !unlocked(x, y) || at(x, y)) return;
+    state.tiles.set(key(x, y), {
+      x, y, type, level, conn:false, staffed:false, active:false,
+      paused: isPaused ? Math.max(0, rest) : null,
+      done: t + Math.max(0, rest),
+      invested: Math.max(0, invested) || T.cost,
+      born: t - 1e6 + i
+    });
+  });
+  if (![...state.tiles.values()].some(b => b.type === 'hall')) placeHall();
+  refresh();
+}
+function placeHall(){
+  state.tiles.set(key(3,3), { x:3, y:3, type:'hall', level:0, conn:true, staffed:true,
+    active:true, paused:null, invested:0,
+    done: now() + TYPES.hall.stages[0].time*1000, born:0 });
+}
+let loading = false, saveTimer = null, savedAt = 0;
+function scheduleSave(){
+  if (loading || Store.mode === 'kein') return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 1200);
+}
+async function saveNow(){
+  if (loading || Store.mode === 'kein') return false;
+  const okSave = await Store.write(serialize());
+  if (okSave){ savedAt = now(); paintSaveState(); }
+  return okSave;
+}
+function newCity(){
+  state.coins = 220;
+  state.tiles = new Map();
+  state.plots = new Set(['0,0','1,0','0,1','1,1']);
+  state.floats = []; state.puffs = []; state.moving = null;
+  rebuildWorld();
+  placeHall();
+  refresh();
+  resetView();
+}
+async function bootSave(){
+  await Store.init();
+  loading = true;
+  let restored = false;
+  const raw = await Store.read();
+  const untouched = state.tiles.size === 1 && state.coins === 220;
+  if (raw && untouched){
+    try { deserialize(raw); resetView(); restored = true; }
+    catch (e){ console.warn('Spielstand unlesbar:', e.message); }
+  }
+  loading = false;
+  paintSaveState();
+  if (restored) flash('Stadt fortgesetzt.');
+}
+function exportFile(){
+  const data = serialize();
+  try {
+    const url = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'iso-stadt-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    flash('Spielstand als Datei gesichert.');
+  } catch (e){
+    showText(data);
+    flash('Herunterladen nicht möglich — hier ist der Sicherungstext.');
+  }
+}
+function importFile(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json,.txt';
+  inp.addEventListener('change', () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => loadText(String(r.result));
+    r.readAsText(f);
+  });
+  inp.click();
+}
+function loadText(str){
+  try {
+    loading = true; deserialize(str.trim()); resetView(); loading = false;
+    saveNow(); flash('Stadt geladen.');
+  } catch (e){
+    loading = false;
+    flash('Konnte nicht geladen werden: ' + e.message);
+  }
+}
+
+/* ============================================================
+   HILFESEITE — Inhalt aus TYPES generiert wie im Original, die
+   Baustufen-Karten bekommen aber je einen eigenen kleinen
+   Three.js-Renderer statt eines Canvas2D-Sprites.
+============================================================ */
+const helpEl = document.getElementById('help');
+const helpCards = [];
+function stepCard(type, level, num){
+  const st = TYPES[type].stages[level];
+  const c = document.createElement('canvas');
+  const dpr = Math.min(2, devicePixelRatio||1);
+  const cw = 108, chh = 118;
+  c.width = Math.round(cw*dpr); c.height = Math.round(chh*dpr);
+  c.style.width = cw+'px'; c.style.height = chh+'px';
+  if (st.time > 0 && !reduceMotion) c.classList.add('glow');
+
+  const cardScene = new THREE.Scene();
+  cardScene.background = new THREE.Color('#0C1922');
+  const cardCam = new THREE.OrthographicCamera(-1,1,1,-1,0.1,50);
+  const s = TYPES[type].stages[level];
+  const totalH = (s.h+s.roofH)*HS + 0.6;
+  const viewH = totalH*1.15;
+  cardCam.left=-viewH*0.55; cardCam.right=viewH*0.55; cardCam.top=viewH*0.9; cardCam.bottom=-viewH*0.1;
+  cardCam.position.set(ISO_DIR.x*10, ISO_DIR.y*10, ISO_DIR.z*10);
+  cardCam.lookAt(0,totalH*0.35,0);
+  cardCam.updateProjectionMatrix();
+  const h1 = new THREE.HemisphereLight(0xffffff,0x223322,0.7); cardScene.add(h1);
+  const d1 = new THREE.DirectionalLight(0xffffff,0.9); d1.position.set(4,6,3); cardScene.add(d1);
+  const tmpl = getBuildingTemplate(type, level);
+  const inst = tmpl.clone(true);
+  cardScene.add(inst);
+  const rnd = new THREE.WebGLRenderer({ canvas:c, antialias:true, alpha:false });
+  rnd.setPixelRatio(1);
+  rnd.setSize(c.width, c.height, false);
+
+  const entry = { renderer:rnd, scene:cardScene, camera:cardCam, group:inst, type, level, phase:helpCards.length*0.9 };
+  helpCards.push(entry);
+  renderHelpCard(entry);
+
+  const d = document.createElement('div');
+  d.className = 'step';
+  if (num){ const nn=document.createElement('div'); nn.className='num'; nn.textContent='Stufe '+num; d.appendChild(nn); }
+  d.appendChild(c);
+  const lines = [];
+  if (st.time) lines.push('<em>'+st.yield.toLocaleString('de-DE')+'</em> / '+st.time+' s');
+  if (st.time) lines.push(Math.round(st.yield*60/st.time).toLocaleString('de-DE')+' pro Min.');
+  if (st.pop)  lines.push('<i>+'+st.pop+' Einwohner</i>');
+  if (st.staff) lines.push('<i>'+st.staff+' Einwohner nötig</i>');
+  if (TYPES[type].aura) lines.push('<i>+'+Math.round(TYPES[type].aura*100)+' % Nachbarn</i>');
+  if (level === 0 && TYPES[type].cost) lines.push('Bau: '+TYPES[type].cost.toLocaleString('de-DE'));
+  if (st.upgrade) lines.push('Ausbau: '+st.upgrade.toLocaleString('de-DE'));
+  const tag = document.createElement('div');
+  tag.innerHTML = '<div class="sn">'+st.name+'</div><div class="sd">'+lines.join('<br>')+'</div>';
+  d.appendChild(tag);
+  return d;
+}
+function renderHelpCard(e){
+  if (TYPES[e.type].tree){
+    const crown = e.group.getObjectByName('crown');
+    if (crown) crown.rotation.z = wind ? Math.sin(windT+e.phase)*(TYPES[e.type].sway||0)*wind*8 : 0;
+  }
+  e.renderer.render(e.scene, e.camera);
+}
+function paintHelpCards(){ for (const e of helpCards) renderHelpCard(e); }
+function chainOf(items, numbered){
+  const row = document.createElement('div'); row.className = 'chain';
+  items.forEach(([t,l],i) => {
+    if (i && numbered){ const sep=document.createElement('div'); sep.className='sep'; sep.textContent='›'; row.appendChild(sep); }
+    row.appendChild(stepCard(t, l, numbered ? i+1 : 0));
+  });
+  return row;
+}
+const chain = type => chainOf(TYPES[type].stages.map((_,i)=>[type,i]), true);
+
+let helpBuilt = false;
+function buildHelp(){
+  if (helpBuilt) return;
+  helpBuilt = true;
+  const body = document.getElementById('helpBody');
+  const add = html => { const d = document.createElement('div'); d.innerHTML = html; body.appendChild(d); };
+
+  add('<p>Baue eine Stadt vom Mittelalter bis in die Zukunft. Gebäude produzieren '+
+      'Münzen, aber nur wenn zwei Bedingungen erfüllt sind: ein durchgehender '+
+      '<b>Straßenweg zum Rathaus</b> und genügend <b>freie Einwohner</b>.</p>'+
+      '<p>Diese Fassung rendert die Stadt als echte 3D-Szene mit Three.js/WebGL statt '+
+      'als gezeichnete Canvas2D-Pfade — Spielregeln und Zahlen sind identisch zum Original.</p>');
+
+  add('<h2>Wohngebäude</h2><p>Sechs Stufen. Jeder Ausbau bringt mehr Münzen und mehr '+
+      'Einwohner, verlängert aber den Takt.</p>'+
+      '<p class="scrollNote">Stufe 1 bis 6 &#8212; seitlich wischen</p>');
+  body.appendChild(chain('hut'));
+
+  add('<h2>Werkstätten</h2><p>Verbrauchen Einwohner statt sie zu stellen.</p>'+
+      '<p class="scrollNote">Stufe 1 bis 5 &#8212; seitlich wischen</p>');
+  body.appendChild(chain('shop'));
+
+  add('<h2>Rathaus</h2><p>Steht fest in der Stadtmitte und ist der Ursprung des '+
+      'Straßennetzes. Es zieht <b>Steuern</b>: pro Einwohner in der Stadt kommen '+
+      '1,6 Münzen je Zyklus hinzu.</p>');
+  body.appendChild(chainOf([['hall',0]], false));
+
+  add('<h2>Verstärker</h2><p>Brunnen und Bäume produzieren selbst nichts. Sie erhöhen '+
+      'den Ertrag der <b>vier angrenzenden Felder</b>, mehrere Verstärker addieren sich.</p>');
+  body.appendChild(chainOf([['well',0],['tree1',0],['tree2',0]], false));
+
+  add('<h2>Straßen</h2><p>Kosten 10 Münzen. Ein Gebäude produziert, wenn eines seiner '+
+      'vier Nachbarfelder eine Straße ist, die lückenlos zum Rathaus führt.</p>');
+
+  add('<h2>Stillstand</h2>'+
+      '<p><span class="flag" style="background:#C46A5C"></span>'+
+      '<b>Rotes Feld</b> — kein Weg zum Rathaus.</p>'+
+      '<p><span class="flag" style="background:#6E93AE"></span>'+
+      '<b>Blaues Feld</b> — zu wenig freie Einwohner.</p>'+
+      '<p>In beiden Fällen wird die Restzeit <b>eingefroren</b>, nicht zurückgesetzt.</p>');
+
+  add('<h2>Bauabschnitte</h2><p>Die Karte besteht aus Feldern zu 4 × 4. Ist jedes Feld '+
+      'bebaut, lassen sich angrenzende Abschnitte kaufen. Der erste kostet 10.000 Münzen, '+
+      'jeder weitere 50 % mehr.</p>');
+
+  add('<h2>Werkzeuge</h2>'+
+      '<div class="keys">'+
+      '<kbd>Ernten</kbd><span>Sammelt nur ein — baut und reißt nichts ab.</span>'+
+      '<kbd>Lang halten</kbd><span>Ein Gebäude kurz gedrückt halten, dann ziehen.</span>'+
+      '<kbd>Verschieben</kbd><span>Gebäude antippen, dann ein freies Feld.</span>'+
+      '<kbd>Ausbauen</kbd><span>Hebt ein Gebäude auf die nächste Stufe.</span>'+
+      '<kbd>Abreißen</kbd><span>Erstattet die Hälfte aller Kosten.</span>'+
+      '</div>');
+
+  add('<h2>Steuerung</h2>'+
+      '<div class="keys">'+
+      '<kbd>Mausrad</kbd><span>Zoomt auf den Punkt unter dem Zeiger.</span>'+
+      '<kbd>Ziehen</kbd><span>Verschiebt die Karte.</span>'+
+      '<kbd>Zwei Finger</kbd><span>Zoomen und verschieben zugleich.</span>'+
+      '<kbd>Umschalt + Ziehen</kbd><span>Verschiebt immer.</span>'+
+      '<kbd>+ &nbsp;&#8722; &nbsp;0</kbd><span>Näher, weiter, ganze Stadt.</span>'+
+      '<kbd>Pfeiltasten</kbd><span>Karte verschieben.</span>'+
+      '</div>');
+
+  const sec = document.createElement('div');
+  sec.innerHTML = '<h2>Speichern</h2><p id="saveState" class="scrollNote"></p>'+
+    '<p>Die Stadt wird automatisch gesichert, sobald der Browser einen Speicher erlaubt. '+
+    'Unabhängig davon kannst du sie jederzeit als Datei ablegen.</p>';
+  body.appendChild(sec);
+
+  const row = document.createElement('div'); row.className = 'btnRow';
+  const box = document.createElement('textarea');
+  box.className = 'saveBox'; box.hidden = true; box.spellcheck = false;
+  box.setAttribute('aria-label','Sicherungstext');
+  const mkBtn = (label, fn, cls) => {
+    const b = document.createElement('button');
+    b.className = 'act' + (cls ? ' ' + cls : '');
+    b.textContent = label;
+    b.addEventListener('click', fn);
+    row.appendChild(b);
+  };
+  mkBtn('Als Datei sichern', exportFile);
+  mkBtn('Datei laden', importFile);
+  mkBtn('Text anzeigen', () => { box.value = serialize(); box.hidden = false; box.focus(); box.select();
+    flash('Text markieren und kopieren.'); });
+  mkBtn('Aus Text laden', () => {
+    if (box.hidden || !box.value.trim()){ box.hidden = false; box.value=''; box.focus();
+      return flash('Sicherungstext hier einfügen, dann erneut drücken.'); }
+    loadText(box.value);
+  });
+  mkBtn('Neu anfangen', async () => {
+    if (!confirm('Die Stadt wird vollständig zurückgesetzt. Fortfahren?')) return;
+    await Store.wipe(); newCity(); flash('Neue Stadt angelegt.');
+  }, 'warn');
+  body.appendChild(row);
+  body.appendChild(box);
+  paintSaveState();
+}
+function paintSaveState(){
+  const el = document.getElementById('saveState');
+  if (!el || !el.tagName) return;
+  const wo = { artefakt:'im Artefaktspeicher', browser:'im Browserspeicher' }[Store.mode];
+  el.textContent = wo
+    ? 'Automatisch gesichert ' + wo + (savedAt ? ' · zuletzt ' + new Date(savedAt).toLocaleTimeString('de-DE') : '')
+    : 'Automatisches Speichern hier nicht möglich — bitte als Datei sichern.';
+}
+function toggleHelp(open){
+  if (open){ buildHelp(); helpEl.hidden = false; document.getElementById('helpClose').focus(); }
+  else { helpEl.hidden = true; }
+}
+document.getElementById('zhelp').addEventListener('click', () => toggleHelp(helpEl.hidden));
+document.getElementById('helpClose').addEventListener('click', () => toggleHelp(false));
+helpEl.addEventListener('click', e => { if (e.target === helpEl) toggleHelp(false); });
+document.getElementById('bSave').addEventListener('click', exportFile);
+document.getElementById('bLoad').addEventListener('click', importFile);
+document.getElementById('zin').addEventListener('click',  () => zoomAt(W/2, H/2, 1.3));
+document.getElementById('zout').addEventListener('click', () => zoomAt(W/2, H/2, 1/1.3));
+document.getElementById('zfit').addEventListener('click', () => { resetView(); flash('Ganze Stadt im Blick.'); });
+
+/* ============================================================
+   13. OBERFLÄCHE
+============================================================ */
+const tray = document.getElementById('tray'), tipEl = document.getElementById('tip');
+let tipTimer = null;
+const TOOLS = [
+  {id:'harvest', name:'Geld ernten', square:true},
+  ...['road','hut','shop','well','tree1','tree2'].map(k=>({id:k,name:TYPES[k].label,type:TYPES[k]})),
+  {id:'move',name:'Verschieben',util:true,hint:'ohne Verlust'},
+  {id:'lift',name:'Ausbauen',util:true,hint:'mehr, aber langsamer'},
+  {id:'raze',name:'Abreißen',util:true,hint:'50 % zurück'}
+];
+for (const tool of TOOLS){
+  const btn = document.createElement('button');
+  btn.className = 'card' + (tool.square ? ' sq' : tool.util ? ' util' : '');
+  btn.dataset.id = tool.id;
+  btn.setAttribute('aria-pressed', String(state.tool===tool.id));
+  if (tool.square){
+    btn.title = tool.name;
+    btn.setAttribute('aria-label', tool.name);
+    btn.innerHTML = '<span class="g"></span><span class="n">Ernten</span>';
+  } else if (tool.util){
+    btn.innerHTML = '<span class="n">'+tool.name+'</span><span class="m">'+tool.hint+'</span>';
+  } else {
+    const s = tool.type.stages[0];
+    const line = tool.type.isRoad ? 'verbindet zum Rathaus'
+      : tool.type.aura ? '+'+Math.round(tool.type.aura*100)+'% Nachbarn'
+      : s.yield+' / '+s.time+' s';
+    const extra = s.staff ? '<br>'+s.staff+' Einwohner'
+                : s.pop   ? '<br>+'+s.pop+' Einwohner' : '';
+    btn.innerHTML = '<span class="n">'+tool.name+'</span>'+
+      '<span class="m"><em>'+tool.type.cost+'</em> Münzen<br>'+line+extra+'</span>';
+  }
+  btn.addEventListener('click', () => {
+    state.tool = tool.id;
+    state.moving = null;
+    for (const el of tray.children) el.setAttribute('aria-pressed', String(el.dataset.id===tool.id));
+    flash(tool.id==='move' ? 'Verschieben: Gebäude antippen, dann ein freies Feld.'
+      : tool.id==='harvest' ? 'Ernten: nur fertige Gebäude einsammeln, nichts wird gebaut.'
+      : tool.id==='road' ? 'Straße: ziehen, um mehrere Felder zu pflastern.'
+      : tool.util ? tool.name+': Gebäude antippen.' : tool.name+' gewählt — freies Feld antippen.');
+  });
+  tray.appendChild(btn);
+}
+function flash(msg){
+  tipEl.textContent = msg; tipEl.style.opacity = '1';
+  clearTimeout(tipTimer); tipTimer = setTimeout(()=>{tipEl.style.opacity='.45';},2600);
+}
+function refresh(){
+  state.net = computeNetwork();
+  const list = [...state.tiles.values()].filter(b => b.type !== 'road');
+
+  let total = 0;
+  for (const b of list){ b.conn = isConnected(b); if (b.conn) total += stageOf(b).pop || 0; }
+
+  let used = 0;
+  for (const b of [...list].sort((x,y) => x.born - y.born)){
+    const need = stageOf(b).staff || 0;
+    if (!need){ b.staffed = true; continue; }
+    b.staffed = b.conn && used + need <= total;
+    if (b.staffed) used += need;
+  }
+  state.pop = { total, used };
+
+  let perMin = 0, idle = 0;
+  for (const b of list){
+    const was = b.active, active = b.conn && b.staffed;
+    if (was && !active) b.paused = Math.max(0, b.done - now());
+    else if (!was && active && b.paused != null){ b.done = now() + b.paused; b.paused = null; }
+    b.active = active;
+    const st = stageOf(b);
+    if (st.time > 0){ if (active) perMin += payout(b)*(60/st.time); else idle++; }
+  }
+  state.free = state.cells.length - state.tiles.size;
+
+  const set = (id,val,warn) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.classList.toggle('warn', !!warn);
+  };
+  set('coins', state.coins.toLocaleString('de-DE'));
+  set('pop', (total-used) + ' / ' + total, total-used < 0);
+  set('rate', Math.round(perMin).toLocaleString('de-DE'));
+  set('cut', idle, idle > 0);
+  set('free', state.free, state.free === 0);
+
+  for (const el of tray.children){
+    const t = TYPES[el.dataset.id];
+    el.classList.toggle('broke', !!t &&
+      (state.coins < t.cost || (t.stages[0].staff||0) > total-used));
+  }
+  syncScene();
+  scheduleSave();
+}
+
+rebuildWorld();
+placeHall();
+resize(); resetView(); started = true; refresh();
+requestAnimationFrame(frame);
+
+addEventListener('pagehide', () => { clearTimeout(saveTimer); saveNow(); });
+addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden'){ clearTimeout(saveTimer); saveNow(); }
+});
+
+bootSave();
+</script>
+</body>
+</html>
