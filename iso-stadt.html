@@ -700,6 +700,19 @@ function paintHouse(g, type, level, mode){
         }
       }
     }
+    // Einzelne Pflanzinseln und Trennstege in den begrünten Wohnebenen.
+    for(const [face,d] of [[fL,-4],[fR,-34]]){
+      for(const v of [3/(s.floors+1),6/(s.floors+1)]){
+        for(let i=0;i<5;i++){
+          const a=.14+i*.17;
+          g.fillStyle=shade('#759B68',d+dim);
+          bd(face,a-.045,v+.037,a+.045,v+.065+(i%2)*.015);
+        }
+      }
+      g.fillStyle=shade(trimC,d+dim);
+      for(const a of [.22,.48,.74]) bd(face,a-.005,.10,a+.005,.94);
+    }
+
     // leuchtende Vorderkante
     g.strokeStyle = lit ? 'rgba(242,176,53,.8)' : shade(trimC,-20+dim);
     g.lineWidth = 1.8;
@@ -1142,6 +1155,100 @@ function paintHouse(g, type, level, mode){
     }
   }
 
+  /* Fassaden im Nahblick: alle Details bleiben im vorhandenen Sprite-Cache. */
+  if (type === 'hut' || type === 'hall'){
+    const stroke = (pts,c,w=.7) => {
+      g.strokeStyle=shade(c,dim); g.lineWidth=w;
+      g.beginPath(); pts.forEach(([x,y],i)=>i ? g.lineTo(x,y) : g.moveTo(x,y)); g.stroke();
+    };
+    if (st === 'timber' || st === 'stone'){
+      for (const [face,d] of faces){
+        for (let f=0;f<s.floors;f++){
+          const v=sock+(1-sock)*(f+.55)/s.floors;
+          const wV=Math.min(.13,(1-sock)/s.floors*.34);
+          const centers=face===faceL ? (f ? [.28,.72] : [.72]) : [.35,.72];
+          for (const a of centers){
+            // Zurückgezogene Vorhänge lassen die Fenstermitte frei.
+            g.fillStyle=shade('#D7C9A9',d+dim);
+            band(face,a-.078,v-wV+.015,a-.046,v+wV-.012);
+            band(face,a+.046,v-wV+.015,a+.078,v+wV-.012);
+            if ((f+Math.round(a*10))%2===0){
+              g.fillStyle=shade('#956349',d+dim);
+              band(face,a-.12,v-wV-.065,a+.12,v-wV-.024);
+              g.fillStyle=shade('#547448',d+dim);
+              band(face,a-.11,v-wV-.025,a+.11,v-wV+.015);
+              for (let j=0;j<4;j++){
+                const q=face(a-.085+j*.055,v-wV+.018+(j%2)*.018);
+                g.fillStyle=shade(j%2 ? '#E4B76C' : '#C97970',d+dim);
+                g.beginPath(); g.arc(q[0],q[1],.65,0,7); g.fill();
+              }
+            }
+            if (st==='stone'){
+              // Kleine Dreiecksgiebel über den oberen Fenstern.
+              if(f>0){
+                g.fillStyle=shade(trimC,d+12+dim);
+                poly(g,[face(a-.13,v+wV+.035),face(a+.13,v+wV+.035),face(a,v+wV+.095)]); g.fill();
+              }
+            } else {
+              for (let j=0;j<3;j++){
+                g.fillStyle=shade('#394F42',d+dim);
+                band(face,a-.145,v-wV+j*wV*.6,a-.106,v-wV+j*wV*.6+.015);
+              }
+            }
+          }
+        }
+      }
+      // Kassetten in der Haustür, Klingelschild und überdachte Schwelle.
+      g.fillStyle=shade('#483B2D',dim);
+      band(faceL,.215,sock+.03,.345,sock+.12);
+      band(faceL,.215,sock+.16,.345,sock+.25);
+      g.fillStyle=shade('#D7CA9D',dim);
+      band(faceL,.43,sock+.20,.51,sock+.26);
+      g.fillStyle=shade('#7B7565',dim);
+      const t0=faceL(.14,sock),t1=faceL(.42,sock);
+      poly(g,[t0,t1,[t1[0]-3,t1[1]+1.5],[t0[0]-3,t0[1]+1.5]]); g.fill();
+    }
+    if (st==='rustic' || st==='timber' || st==='stone'){
+      // Fallrohr mit Halterungen an der schattigen Hausecke.
+      stroke([faceR(.94,.96),faceR(.98,.88),faceR(.98,.12),faceR(.90,.04)],'#616D68',1.15);
+      for(const v of [.23,.56,.85]) stroke([faceR(.94,v),faceR(1.02,v)],'#9B9C83',.75);
+    }
+    if (st==='modern'){
+      for(let f=1;f<s.floors;f++){
+        const v=(f+.5)/s.floors, bottom=v-1/s.floors*.26-.03;
+        const p0=faceL(.20,bottom),p1=faceL(.48,bottom);
+        // Balkonkästen vor dem Geländer.
+        const q0=[p0[0]-8,p0[1]-2],q1=[p1[0]-8,p1[1]-2];
+        g.fillStyle=shade('#9D6C52',dim);
+        poly(g,[q0,q1,[q1[0],q1[1]+2.5],[q0[0],q0[1]+2.5]]);g.fill();
+        stroke([[q0[0],q0[1]-.7],[q1[0],q1[1]-.7]],'#73915A',2);
+        if(f===2){
+          // Ausgefahrene Stoffmarkise mit abwechselnden Bahnen.
+          const a=faceL(.12,v+.09),b=faceL(.68,v+.09);
+          for(let j=0;j<6;j++){
+            const u=mid(a,b,j/6),z=mid(a,b,(j+1)/6);
+            g.fillStyle=shade(j%2 ? '#D7C9A8' : '#658A80',dim);
+            poly(g,[u,z,[z[0]-9,z[1]+2],[u[0]-9,u[1]+2]]);g.fill();
+          }
+        }
+      }
+    }
+    if(st==='glass'){
+      // Schmale Reflexe und vereinzelte Jalousien in der Glasfassade.
+      for(const [face,d] of faces){
+        g.fillStyle='rgba(218,237,238,.17)';
+        band(face,.13,.15,.16,.93); band(face,.64,.30,.68,.82);
+        for(let f=1;f<s.floors;f++){
+          const a=.08+(f%4)*.145,v=.03+.94*f/s.floors;
+          g.fillStyle=shade('#87969A',d+dim);
+          band(face,a,v+.012,a+.115,v+.065);
+          g.fillStyle='rgba(30,40,48,.28)';
+          for(let j=0;j<3;j++) band(face,a,v+.02+j*.015,a+.115,v+.026+j*.015);
+        }
+      }
+    }
+  }
+
   /* ==================== DACH ==================== */
   if (st === 'brick'){
     /* Sheddach: die klassische Fabrikform, Nordlicht über der Halle. */
@@ -1312,6 +1419,17 @@ function paintHouse(g, type, level, mode){
     } else {
       g.strokeStyle = 'rgba(0,0,0,.20)'; g.lineWidth = 1;
     }
+    // Versetzte Ziegelfugen folgen der Dachfläche statt dem Bildschirmraster.
+    if(st !== 'rustic'){
+      g.strokeStyle='rgba(18,24,28,.22)'; g.lineWidth=.55;
+      for(let row=0;row<rows;row++) for(let col=0;col<8;col++){
+        const u=(col+.5*(row%2))/8;
+        const q0=mid(mid(b,a,row/rows),mid(c,d,row/rows),u);
+        const q1=mid(mid(b,a,(row+1)/rows),mid(c,d,(row+1)/rows),u);
+        g.beginPath();g.moveTo(...q0);g.lineTo(...q1);g.stroke();
+      }
+      g.strokeStyle='rgba(0,0,0,.20)';g.lineWidth=.8;
+    }
     for (let i=1;i<rows;i++){
       const s1 = mid(b,a,i/rows), s2 = mid(c,d,i/rows);
       g.beginPath(); g.moveTo(s1[0],s1[1]); g.lineTo(s2[0],s2[1]); g.stroke();
@@ -1351,6 +1469,14 @@ function paintHouse(g, type, level, mode){
   poly(g,[[ch[0],ch[1]+cw*0.5],[ch[0]+cw,ch[1]],[ch[0]+cw,ch[1]-chh],[ch[0],ch[1]+cw*0.5-chh]]); g.fill();
   g.fillStyle = shade(chC,-4+dim);
   diamond(g, ch[0], ch[1]-chh, cw*2.4, cw*1.2); g.fill();
+  // Mauerfugen, Rußöffnung und heller Rand des Schornsteins.
+  g.strokeStyle=shade(chC,-42+dim); g.lineWidth=.65;
+  for(let j=1;j<5;j++){
+    const yy=ch[1]-chh*j/5;
+    g.beginPath();g.moveTo(ch[0]-cw,yy);g.lineTo(ch[0],yy+cw*.5);g.lineTo(ch[0]+cw,yy);g.stroke();
+  }
+  g.fillStyle=shade('#303536',dim);
+  diamond(g,ch[0],ch[1]-chh,cw*1.35,cw*.62);g.fill();
   lastChimney = [ch[0], ch[1]-chh-2];
 
   // Sichtbarer Giebel
@@ -1448,9 +1574,99 @@ function paintTree(g, type, mode){
 function paintAny(g, type, level, mode){
   lastChimney = null;
   const t = TYPES[type];
+  if (!t.tree) paintYard(g, type, level, mode, false);
   if (t.tree) paintTree(g, type, mode);
   else if (type === 'well') paintWell(g, mode);
   else paintHouse(g, type, level, mode);
+  if (!t.tree) paintYard(g, type, level, mode, true);
+}
+
+/* Kleine Außenräume gehören zum gecachten Sprite. Boden zuerst, Möbel danach:
+   dadurch bleiben Wege hinter dem Haus und die Vorderkante davor. */
+function paintYard(g, type, level, mode, foreground){
+  const dim = mode === 'cut' ? -35 : 0;
+  const color = (c,d=0) => shade(c,d+dim);
+  const patch = (points,c) => { g.fillStyle=color(c); poly(g,points); g.fill(); };
+  const line = (points,c,w=1) => {
+    g.strokeStyle=color(c); g.lineWidth=w;
+    g.beginPath(); points.forEach(([x,y],i)=>i ? g.lineTo(x,y) : g.moveTo(x,y)); g.stroke();
+  };
+  const planter = (x,y,flowers) => {
+    patch([[x-3,y-3],[x+3,y-3],[x+2,y+1],[x-2,y+1]],'#89624B');
+    for (const [dx,dy,r] of [[-2,-4,2],[1,-5,2.6],[3,-3,1.7]]){
+      g.fillStyle=color('#668951',dx*3);
+      g.beginPath(); g.arc(x+dx,y+dy,r,0,Math.PI*2); g.fill();
+    }
+    if (flowers) for (const [dx,dy,c] of [[-2,-5,'#E5BA6B'],[1,-6,'#D58A83'],[3,-4,'#E5D9AB']]){
+      g.fillStyle=color(c); g.beginPath(); g.arc(x+dx,y+dy,.85,0,Math.PI*2); g.fill();
+    }
+  };
+  const bench = (x,y) => {
+    line([[x-5,y+1],[x-5,y+4]],'#303B38',1.4);
+    line([[x+4,y+5],[x+4,y+8]],'#303B38',1.4);
+    patch([[x-7,y-1],[x-3,y-3],[x+8,y+2],[x+4,y+4]],'#A78355');
+    line([[x-6,y-5],[x+5,y]],'#B59669',2);
+    line([[x-6,y-5],[x-6,y],[x+5,y+5],[x+5,y]],'#514D3B',.8);
+  };
+  g.save();
+  if (!foreground){
+    if (type === 'hall' || type === 'well' || type === 'shop'){
+      g.fillStyle=color(type === 'shop' ? '#68716A' : '#8B8974');
+      diamond(g,0,0,60,29); g.fill();
+      g.strokeStyle='rgba(30,38,32,.22)'; g.lineWidth=.6;
+      for (let i=-2;i<=2;i++){
+        const x=i*7, y=i*3.5;
+        g.beginPath(); g.moveTo(x-17,y+8.5); g.lineTo(x+17,y-8.5); g.stroke();
+      }
+    } else if (type === 'hut'){
+      patch([[-13,4],[-7,7],[-19,13],[-25,10]],'#A49A7B');
+      line([[-16,6],[-10,9]],'#706E5B',.6);
+      line([[-20,8],[-14,11]],'#706E5B',.6);
+    }
+  } else if (type === 'hut'){
+    // Niedrige Einfassung mit offener Gartentür vor dem Haus.
+    if (level < 3){
+      line([[2,14],[16,7],[27,2]],'#AF9871',1.3);
+      line([[2,11],[16,4],[27,-1]],'#AF9871',1.2);
+      for (const x of [2,9,16,23,27]){
+        const y=15-x*.5;
+        line([[x,y+1],[x,y-6]],'#C2AE84',1.5);
+      }
+      planter(-3,13,true);
+      line([[-24,8],[-24,1]],'#564E3C',1.3);
+      patch([[-27,-2],[-22,-2],[-21,2],[-27,2]],'#577B79');
+      line([[-26,0],[-23,0]],'#C9BD96',.65);
+    } else {
+      planter(18,6,false); planter(-18,6,true);
+      bench(1,12);
+    }
+  } else if (type === 'hall'){
+    bench(-20,4); bench(15,6);
+    planter(0,14,true);
+    // Kleines Anschlagbrett neben dem Rathausplatz.
+    line([[25,2],[25,-10]],'#544A38',1.5);
+    patch([[21,-14],[29,-10],[29,-4],[21,-8]],'#66513C');
+    patch([[22,-12],[28,-9],[28,-6],[22,-9]],'#D6C89E');
+    line([[23,-10],[27,-8]],'#887A5B',.6);
+  } else if (type === 'shop'){
+    for (const [x,y] of [[-23,5],[-16,9],[-23,0]]){
+      patch([[x-3,y-5],[x+3,y-2],[x+3,y+3],[x-3,y]],'#916D48');
+      patch([[x+3,y-2],[x+6,y-4],[x+6,y+1],[x+3,y+3]],'#634E37');
+      patch([[x-3,y-5],[x,y-7],[x+6,y-4],[x+3,y-2]],'#B18C5A');
+      line([[x-2,y-4],[x+2,y+1]],'#C2A270',.7);
+    }
+    // Verladestelle mit eingelassenen Metallschienen.
+    line([[5,13],[18,6]],'#414D4A',1.3);
+    line([[9,15],[22,8]],'#414D4A',1.3);
+    planter(25,1,false);
+  } else if (type === 'well'){
+    bench(-23,3); planter(21,5,true);
+    g.strokeStyle=color('#B8A981'); g.lineWidth=1;
+    g.beginPath(); g.ellipse(9,11,3,1.4,0,0,Math.PI*2); g.stroke();
+    patch([[6,11],[12,11],[11,15],[7,15]],'#8E7150');
+    g.beginPath(); g.arc(9,10,2.5,Math.PI,Math.PI*2); g.stroke();
+  }
+  g.restore();
 }
 
 function paintWell(g, mode){
@@ -1874,13 +2090,18 @@ function reseedWalkers(){
     walkers.push({ fx:sx, fy:sy, tx:nxt[0], ty:nxt[1], px:sx, py:sy,
       t:Math.random(), spd:.4+Math.random()*.3, ph:Math.random()*7,
       col:['#CBD8DC','#C46A5C','#8FA6B8','#B89F6A','#7E8E96','#A67B5B'][i%6],
-      hat:i%3===0 });
+      skin:['#E5C6A3','#BC8A65','#8D5E46','#D5A781'][i%4],
+      hair:['#493A30','#A87A46','#C4BAB0','#302C2B'][i%4],
+      trousers:['#354958','#514D43','#4B4248'][i%3],
+      accessory:['hat','scarf','bag','backpack','cap','none'][i%6],
+      size:[1,.94,1.06,.88][i%4], gait:Math.random()*Math.PI*2 });
   }
 }
 function stepWalkers(dt){
   if (state.net.size !== walkerNetSize) reseedWalkers();
   for (const w of walkers){
     w.t += w.spd*dt;
+    w.gait += w.spd*dt*Math.PI*6; // durchgehender Schritt, auch am Feldwechsel
     while (w.t >= 1){
       w.t -= 1;
       const nb = netNeighbors(w.tx,w.ty);
@@ -1894,23 +2115,78 @@ function stepWalkers(dt){
   }
 }
 function drawWalker(w){
-  const a = iso(w.fx,w.fy), b2 = iso(w.tx,w.ty);
-  const x = a.x+(b2.x-a.x)*w.t, y = a.y+(b2.y-a.y)*w.t;
-  const bob = Math.abs(Math.sin(w.t*Math.PI))*1.5;
-  const leg = Math.sin(w.t*Math.PI*2+w.ph)*1.7;
-  ctx.fillStyle = 'rgba(0,0,0,.28)';
-  ctx.beginPath(); ctx.ellipse(x, y+.8, 3, 1.4, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = w.col; ctx.lineWidth = 1.9; ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(x-leg, y); ctx.lineTo(x, y-bob-2.4); ctx.lineTo(x+leg, y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x, y-bob-2.4); ctx.lineTo(x, y-bob-6.6); ctx.stroke();
-  ctx.lineCap = 'butt';
-  ctx.fillStyle = '#E5C6A3';
-  ctx.beginPath(); ctx.arc(x, y-bob-8.1, 1.7, 0, 7); ctx.fill();
-  if (w.hat){
-    ctx.fillStyle = 'rgba(20,28,32,.85)';
-    ctx.beginPath(); ctx.arc(x, y-bob-8.4, 1.9, Math.PI, 0); ctx.fill();
+  const a = iso(w.fx,w.fy), b = iso(w.tx,w.ty);
+  const x = a.x+(b.x-a.x)*w.t, y = a.y+(b.y-a.y)*w.t;
+  const dir = b.x >= a.x ? 1 : -1, back = b.y < a.y;
+  const stride = Math.sin(w.gait), bob = Math.cos(w.gait*2)*.25;
+  const limb = (points,c,width) => {
+    ctx.strokeStyle=c; ctx.lineWidth=width;
+    ctx.beginPath(); points.forEach(([px,py],i)=>i ? ctx.lineTo(px,py) : ctx.moveTo(px,py)); ctx.stroke();
+  };
+  const shape = (points,c) => { ctx.fillStyle=c; poly(ctx,points); ctx.fill(); };
+  const oval = (cx,cy,rx,ry,c) => {
+    ctx.fillStyle=c; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill();
+  };
+  ctx.save();
+  ctx.translate(x,y); ctx.scale(w.size,w.size);
+  oval(.5,1,3.8,1.3,'rgba(0,0,0,.25)');
+  ctx.scale(dir,1); ctx.lineCap='round'; ctx.lineJoin='round';
+  const hip = -4.4+bob, shoulder = -9.1+bob;
+  // Hinteres Bein und hinterer Arm bleiben hinter dem Mantel.
+  limb([[.6,hip],[-stride*1.2,-2],[-stride*2,0]],shade(w.trousers,-16),1.35);
+  limb([[-stride*2,0],[-stride*2+1,.15]],'#292D2D',1.4);
+  limb([[.6,shoulder],[1.2+stride,-6.9+bob],[stride*1.7,-5.5+bob]],shade(w.col,-28),1.2);
+  oval(stride*1.7,-5.4+bob,.65,.7,shade(w.skin,-15));
+  // Getrennte Hose, Schuhe und taillierte Kleidung statt Strichfigur.
+  limb([[-.7,hip],[stride*.8,-2.1],[stride*2,.25]],w.trousers,1.5);
+  limb([[stride*2,.25],[stride*2+1.2,.4]],'#343635',1.5);
+  shape([[-1.7,shoulder], [.9,shoulder-.1],[1.6,hip+.2],[-1.8,hip+.2]],w.col);
+  shape([[.5,shoulder],[1,shoulder],[1.6,hip+.2],[.7,hip+.2]],shade(w.col,-24));
+  limb([[-1.5,hip+.1],[1.5,hip+.1]],shade(w.col,-28),.55);
+  if (!back){
+    limb([[.4,shoulder+.5],[.5,hip-.4]],shade(w.col,-30),.45);
+    oval(.65,shoulder+2,.28,.28,'#E1D2AC');
+    oval(.7,shoulder+3.3,.28,.28,'#E1D2AC');
   }
+  limb([[-1.3,shoulder+.5],[-1.8-stride*.6,-7+bob],[-stride*1.7-1,-5.4+bob]],shade(w.col,8),1.35);
+  oval(-stride*1.7-1,-5.2+bob,.7,.8,w.skin);
+  if (w.accessory === 'bag'){
+    const bx=-stride*1.7-1, by=-4.9+bob;
+    limb([[bx-1,by+1],[bx-1,by],[bx+1,by],[bx+1,by+1]],'#6D523A',.6);
+    shape([[bx-1.7,by+.7],[bx+1.7,by+.7],[bx+1.5,by+3.1],[bx-1.6,by+3.1]],'#AE8757');
+    limb([[bx-.7,by+1],[bx-.7,by+2.7]],'#CEAD77',.5);
+  }
+  if (w.accessory === 'backpack'){
+    if (back){
+      oval(-.5,-7+bob,1.7,2.1,'#89704F');
+      shape([[-1.7,-7+bob],[.8,-7+bob],[.8,-5.8+bob],[-1.7,-5.8+bob]],'#AC9064');
+    } else limb([[-1,shoulder+.2],[-.6,hip-.4]],'#B29C70',.8);
+  }
+  // Hals, Haaransatz und Profil richten sich nach der Laufrichtung.
+  limb([[0,shoulder],[0,shoulder-1.1]],w.skin,1.2);
+  const hy=-11.1+bob;
+  oval(0,hy,1.65,1.95,w.skin);
+  if (!back){
+    oval(1.5,hy+.4,.55,.5,w.skin);
+    oval(.9,hy-.15,.24,.28,'#3B3430');
+    limb([[.7,hy+1.1],[1.2,hy+1.1]],shade(w.skin,-35),.35);
+  }
+  ctx.fillStyle=w.hair;
+  ctx.beginPath(); ctx.ellipse(-.15,hy-.45,1.7,1.6,0,Math.PI,Math.PI*2); ctx.fill();
+  if (back) oval(-.3,hy,1.45,1.55,w.hair);
+  else limb([[-1.45,hy-.7],[-1.4,hy+.7]],w.hair,.8);
+  if (w.accessory === 'hat'){
+    shape([[-1.6,hy-1],[-1.2,hy-3],[1.2,hy-3],[1.6,hy-1]],'#655847');
+    limb([[-2.2,hy-1],[2.3,hy-1]],'#867357',1);
+    limb([[-1.4,hy-1.6],[1.4,hy-1.6]],'#C1A777',.55);
+  } else if (w.accessory === 'cap'){
+    oval(0,hy-1.3,1.8,.9,'#71848B');
+    limb([[.6,hy-1],[2.3,hy-.8]],'#526971',.9);
+  } else if (w.accessory === 'scarf'){
+    limb([[-1,shoulder],[1.1,shoulder+.1]],'#D6A653',1.1);
+    limb([[-.8,shoulder],[-1.3,shoulder+2.4]],'#D6A653',1);
+  }
+  ctx.restore();
 }
 
 function stepBirds(dt){
@@ -2094,7 +2370,7 @@ function frame(){
   const visW = viewBox(40);
   for (const w of walkers){
     if (!inBox(iso((w.fx+w.tx)/2,(w.fy+w.ty)/2), visW)) continue;
-    items.push({ d:(w.fx+w.fy+w.tx+w.ty)/2+.02, f:() => drawWalker(w) });
+    items.push({ d:w.fx+w.fy+((w.tx+w.ty)-(w.fx+w.fy))*w.t+.02, f:() => drawWalker(w) });
   }
   items.sort((a,b)=>a.d-b.d);
   for (const it of items) it.f();
@@ -2664,7 +2940,7 @@ function buildHelp(){
   add('<h2>Werkstätten</h2><p>Verbrauchen Einwohner statt sie zu stellen. Ohne genug '+
       'freie Leute lassen sie sich weder bauen noch ausbauen, und eine bestehende '+
       'Werkstatt steht still, sobald der Wohnraum wegfällt.</p>'+
-      '<p class="scrollNote">Stufe 1 bis 3 &#8212; seitlich wischen</p>');
+      '<p class="scrollNote">Stufe 1 bis 5 &#8212; seitlich wischen</p>');
   body.appendChild(chain('shop'));
 
   add('<h2>Rathaus</h2><p>Steht fest in der Stadtmitte und ist der Ursprung des '+
@@ -2688,7 +2964,11 @@ function buildHelp(){
       'Abgeschnittene Stücke werden rot gestrichelt markiert und zählen nicht. '+
       'Mit gedrücktem Zeiger lassen sich mehrere Felder am Stück pflastern.</p>');
 
-  add('<h2>Leben in der Stadt</h2><p>Belebte Straßen bekommen Laternen, Mittellinien '+
+  add('<h2>Leben in der Stadt</h2><p>Wohnhäuser haben kleine Vorgärten mit Zäunen, '+
+      'Briefkästen und Blumen. Spätere Wohnstufen bekommen Sitzbänke und Pflanzkübel. '+
+      'An den Werkstätten stehen Warenkisten auf gepflasterten Höfen; am Rathaus '+
+      'laden Bänke und ein Anschlagbrett zum Verweilen ein. Auch der Brunnen hat '+
+      'einen kleinen Platz mit Sitzbank und Eimer.</p><p>Belebte Straßen bekommen Laternen, Mittellinien '+
       'und Passanten, die ziellos umherlaufen. Über der Stadt ziehen Vogelschwärme '+
       'und Wolkenschatten, darüber funkelnde Sterne mit Mond — und mit etwas Geduld '+
       'eine Sternschnuppe. Bäume geben Glühwürmchen von sich, das Rathaus trägt eine '+
